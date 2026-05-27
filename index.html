@@ -1,0 +1,3548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vali — AI Table Tennis Ball Picker</title>
+  <meta name="description" content="Vali is an AI-powered robot that picks up every ball after multi-ball sessions. Stop cleaning up. Start coaching.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --orange:       #FF6A1A;
+      --orange-light: #FF8C47;
+      --bg:           #040C18;
+      --bg-mid:       #070E1A;
+      --surface:      #0B1725;
+      --card:         #0E1C2E;
+      --card-hover:   #111F32;
+      --border:       rgba(255, 255, 255, 0.07);
+      --border-o:     rgba(255, 106, 26, 0.3);
+      --white:        #FFFFFF;
+      --muted:        #8899AE;
+      --dim:          #435568;
+      --error:        #FF4D6A;
+      --success:      #28C76F;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--white);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    body.locked { overflow: hidden; }
+
+    h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0;
+      margin: -1px; overflow: hidden; clip: rect(0,0,0,0);
+      white-space: nowrap; border: 0;
+    }
+
+    .wrap {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* ─── NAV ─── */
+    #nav {
+      position: fixed; inset: 0 0 auto;
+      z-index: 200;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.625rem 2.5rem;
+      border-bottom: 1px solid transparent;
+      transition: padding .3s ease, background .4s ease, border-color .4s ease, backdrop-filter .4s ease;
+    }
+    #nav.stuck {
+      padding: 1rem 2.5rem;
+      background: rgba(4, 12, 24, 0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-color: rgba(255, 106, 26, 0.1);
+    }
+    .logo {
+      display: flex; align-items: center; gap: .6rem;
+      text-decoration: none;
+    }
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.25rem; font-weight: 800;
+      letter-spacing: -.025em; color: var(--white);
+    }
+    .logo-text em { font-style: normal; color: var(--orange); }
+
+    .nav-right { display: flex; align-items: center; gap: .75rem; }
+
+    .cart-btn {
+      position: relative;
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.12);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+    .cart-btn:hover {
+      border-color: rgba(255,106,26,.5);
+      background: rgba(255,106,26,.08);
+    }
+    .cart-badge {
+      position: absolute;
+      top: -6px; right: -6px;
+      background: var(--orange);
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: .7rem;
+      min-width: 20px; height: 20px;
+      border-radius: 10px;
+      padding: 0 6px;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid var(--bg);
+    }
+    .cart-badge.hidden { display: none; }
+
+    .user-chip {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .55rem .9rem;
+      border-radius: 10px;
+      background: rgba(255,106,26,.08);
+      border: 1px solid rgba(255,106,26,.3);
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: .85rem;
+      color: var(--white);
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+    .user-chip:hover { background: rgba(255,106,26,.14); }
+    .user-avatar {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--orange);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .72rem;
+      color: #fff;
+    }
+
+    /* ─── BUTTONS ─── */
+    .btn {
+      display: inline-flex; align-items: center; gap: .45rem;
+      font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+      text-decoration: none; cursor: pointer; border: none;
+      border-radius: 10px;
+      transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+    }
+    .btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
+    .btn-lg  { padding: .9rem 2rem;   font-size: .9375rem; }
+    .btn-md  { padding: .7rem 1.5rem; font-size: .875rem; }
+    .btn-sm  { padding: .55rem 1.1rem; font-size: .8125rem; }
+    .btn-block { width: 100%; justify-content: center; padding-top: 1rem; padding-bottom: 1rem; }
+
+    .btn-fill {
+      background: var(--orange);
+      color: #fff;
+      box-shadow: 0 4px 22px rgba(255, 106, 26, .28);
+    }
+    .btn-fill:hover {
+      background: var(--orange-light);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 36px rgba(255, 106, 26, .44);
+    }
+    .btn-fill:disabled {
+      background: rgba(255,106,26,.4);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .btn-ghost {
+      background: transparent; color: var(--white);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+    .btn-ghost:hover {
+      border-color: rgba(255,255,255,.32);
+      background: rgba(255,255,255,.04);
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: rgba(255,255,255,.03);
+      color: var(--white);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+    .btn-outline:hover {
+      border-color: rgba(255,106,26,.4);
+      background: rgba(255,106,26,.06);
+    }
+
+    /* ─── TAGS ─── */
+    .tag {
+      display: inline-flex; align-items: center; gap: .45rem;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: .6875rem; font-weight: 700;
+      letter-spacing: .11em; text-transform: uppercase;
+      color: var(--orange);
+      padding: .35rem .875rem;
+      border: 1px solid rgba(255, 106, 26, .26);
+      border-radius: 100px;
+      background: rgba(255, 106, 26, .07);
+      margin-bottom: 1.375rem;
+    }
+
+    /* ─── TYPE ─── */
+    .display {
+      font-size: clamp(2.75rem, 5.8vw, 4.75rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -.035em;
+    }
+    .section-title {
+      font-size: clamp(2rem, 3.6vw, 3rem);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -.025em;
+    }
+    .lead {
+      font-size: clamp(1rem, 1.4vw, 1.125rem);
+      line-height: 1.78;
+      color: var(--muted);
+    }
+    .accent { color: var(--orange); }
+
+    /* ─── CARDS ─── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 2rem;
+      transition: border-color .3s ease, transform .3s ease, box-shadow .3s ease;
+    }
+    .card:hover {
+      border-color: var(--border-o);
+      transform: translateY(-5px);
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+
+    /* ─── HERO ─── */
+    #hero {
+      position: relative;
+      min-height: 100svh;
+      display: flex; align-items: center;
+      overflow: hidden;
+    }
+    .hero-radial {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 65% 70% at 78% 50%, rgba(255,106,26,.08) 0%, transparent 62%),
+        radial-gradient(ellipse 45% 40% at 18% 85%, rgba(255,106,26,.04) 0%, transparent 60%);
+    }
+    .hero-dots {
+      position: absolute; inset: 0; pointer-events: none; opacity: .35;
+      background-image: radial-gradient(circle, rgba(255,106,26,.18) 1px, transparent 1px);
+      background-size: 34px 34px;
+      mask-image: radial-gradient(ellipse 90% 85% at 50% 50%, black 0%, transparent 72%);
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem; align-items: center;
+      padding-top: 7rem; padding-bottom: 5rem;
+    }
+    .hero-stats { display: flex; gap: 0; margin-top: 2.5rem; }
+    .hstat {
+      padding: 0 2rem 0 0;
+      margin-right: 2rem;
+      border-right: 1px solid rgba(255,255,255,.09);
+    }
+    .hstat:last-child { border-right: none; margin-right: 0; padding-right: 0; }
+    .hstat-n {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.375rem; font-weight: 800;
+      color: var(--orange); line-height: 1;
+    }
+    .hstat-l { font-size: .8rem; color: var(--dim); margin-top: .25rem; }
+
+    .scroll-cue {
+      position: absolute; bottom: 2.25rem; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: .45rem;
+      opacity: .25;
+    }
+    .scroll-cue span {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: .65rem; font-weight: 700;
+      letter-spacing: .15em; text-transform: uppercase;
+    }
+
+    /* ─── HOW ─── */
+    .steps-wrapper {
+      border: 1px solid var(--border);
+      border-radius: 20px; overflow: hidden;
+    }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .step {
+      padding: 2.75rem 2.5rem;
+      border-right: 1px solid var(--border);
+    }
+    .step:last-child { border-right: none; }
+    .step-n {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 3.25rem; font-weight: 800;
+      color: rgba(255,106,26,.13);
+      line-height: 1; margin-bottom: 1.5rem;
+    }
+    .step-icon { margin-bottom: 1.25rem; }
+    .step h3 { font-size: 1.125rem; font-weight: 700; margin-bottom: .625rem; }
+    .step p  { font-size: .9375rem; color: var(--muted); line-height: 1.72; }
+
+    /* ─── SURFACES ─── */
+    .surface-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+    }
+
+    /* ─── PROBLEM ─── */
+    .problem-grid {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 4rem; align-items: start;
+    }
+    .pain-list { display: flex; flex-direction: column; }
+    .pain-row {
+      display: flex; gap: 1.75rem; align-items: flex-start;
+      padding: 1.875rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .pain-row:first-child { padding-top: 0; }
+    .pain-row:last-child  { border-bottom: none; padding-bottom: 0; }
+    .pain-ic {
+      flex-shrink: 0; width: 46px; height: 46px;
+      border-radius: 12px;
+      background: rgba(255,106,26,.08);
+      border: 1px solid rgba(255,106,26,.2);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pain-row h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: .45rem; }
+    .pain-row p  { font-size: .9375rem; color: var(--muted); line-height: 1.72; }
+
+    .stat-stack {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px; overflow: hidden;
+    }
+    .stat-block {
+      padding: 2.25rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-block:last-child { border-bottom: none; }
+    .stat-big {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800; color: var(--orange);
+      line-height: 1; margin-bottom: .5rem;
+    }
+    .stat-desc { font-size: .9375rem; color: var(--muted); }
+
+    /* ─── FEATURES ─── */
+    .feat-grid-main {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem; margin-bottom: 1.25rem;
+    }
+    .feat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px; padding: 2rem;
+      transition: border-color .3s ease, transform .3s ease;
+    }
+    .feat-card:hover {
+      border-color: var(--border-o);
+      transform: translateY(-4px);
+    }
+    .feat-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 3.5rem; font-weight: 800;
+      color: var(--orange); line-height: 1; margin-bottom: 1rem;
+    }
+    .feat-card h3 { font-size: 1.125rem; font-weight: 700; margin-bottom: .625rem; }
+    .feat-card p  { font-size: .9375rem; color: var(--muted); line-height: 1.72; }
+
+    .feat-grid-mini {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+    }
+    .mini-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.5rem;
+      display: flex; gap: 1rem; align-items: flex-start;
+      transition: border-color .3s ease;
+    }
+    .mini-card:hover { border-color: var(--border-o); }
+    .mini-ic {
+      flex-shrink: 0; width: 36px; height: 36px;
+      border-radius: 9px;
+      background: rgba(255,106,26,.1);
+      border: 1px solid rgba(255,106,26,.18);
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+    .mini-card h4 { font-size: .9375rem; font-weight: 700; margin-bottom: .25rem; }
+    .mini-card p  { font-size: .875rem; color: var(--muted); line-height: 1.62; }
+
+    /* ─── SHOP ─── */
+    #shop {
+      position: relative;
+    }
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+    .product-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      transition: all .3s ease;
+      display: flex; flex-direction: column;
+    }
+    .product-card:hover {
+      border-color: var(--border-o);
+      transform: translateY(-6px);
+      box-shadow: 0 24px 60px rgba(0,0,0,.4);
+    }
+    .product-card.featured {
+      border-color: rgba(255,106,26,.5);
+      box-shadow: 0 0 0 1px rgba(255,106,26,.2);
+    }
+    .product-vis {
+      aspect-ratio: 4/3;
+      background: linear-gradient(135deg, rgba(255,106,26,.06) 0%, rgba(7,30,56,.4) 100%);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+    .product-badge {
+      position: absolute;
+      top: 1rem; right: 1rem;
+      background: var(--orange);
+      color: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: .65rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: .35rem .75rem;
+      border-radius: 100px;
+    }
+    .product-body { padding: 1.75rem; flex: 1; display: flex; flex-direction: column; }
+    .product-tier {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: .7rem; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: .5rem;
+    }
+    .product-name { font-size: 1.375rem; font-weight: 700; margin-bottom: .5rem; }
+    .product-desc { font-size: .875rem; color: var(--muted); line-height: 1.6; margin-bottom: 1.25rem; }
+    .product-features {
+      list-style: none;
+      margin-bottom: 1.5rem;
+      flex: 1;
+    }
+    .product-features li {
+      font-size: .8125rem; color: var(--muted);
+      padding: .35rem 0; display: flex; align-items: center; gap: .5rem;
+    }
+    .product-features li::before {
+      content: ''; width: 5px; height: 5px;
+      background: var(--orange);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .product-price-row {
+      display: flex; align-items: baseline; gap: .5rem;
+      margin-bottom: 1.25rem;
+    }
+    .product-price {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.875rem; font-weight: 800;
+      color: var(--white);
+    }
+    .product-currency { color: var(--muted); font-size: .875rem; }
+    .product-orig {
+      color: var(--dim);
+      text-decoration: line-through;
+      font-size: .9rem;
+    }
+
+    /* ─── CTA ─── */
+    .cta-glow {
+      position: absolute; inset: 0; pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cta-glow-orb {
+      width: 780px; height: 780px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,106,26,.065) 0%, transparent 65%);
+    }
+
+    /* ─── FORMS ─── */
+    .form-group { margin-bottom: 1.125rem; }
+    .form-label {
+      display: block;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: .8125rem; font-weight: 600;
+      color: var(--muted);
+      margin-bottom: .5rem;
+    }
+    .form-input,
+    .form-select {
+      width: 100%;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.12);
+      color: var(--white);
+      padding: .85rem 1rem;
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: .9375rem;
+      outline: none;
+      transition: border-color .2s ease, background .2s ease;
+    }
+    .form-input:focus,
+    .form-select:focus {
+      border-color: rgba(255,106,26,.5);
+      background: rgba(255,255,255,.06);
+    }
+    .form-input::placeholder { color: var(--dim); }
+    .form-input.invalid { border-color: var(--error); }
+    .form-input.valid { border-color: rgba(40, 199, 111, .4); }
+
+    .form-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3e%3cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238899AE' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 2.5rem;
+    }
+    .form-select option { background: var(--card); color: var(--white); }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .875rem;
+    }
+    .form-row-3 {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: .875rem;
+    }
+
+    .form-hint {
+      font-size: .75rem;
+      color: var(--dim);
+      margin-top: .4rem;
+      line-height: 1.5;
+    }
+    .form-error {
+      font-size: .75rem;
+      color: var(--error);
+      margin-top: .4rem;
+      display: none;
+      line-height: 1.5;
+    }
+    .form-error.show { display: block; }
+
+    /* password requirements */
+    .pw-reqs {
+      margin-top: .5rem;
+      padding: .75rem 1rem;
+      background: rgba(255,255,255,.025);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 8px;
+      font-size: .75rem;
+    }
+    .pw-req {
+      display: flex; align-items: center; gap: .5rem;
+      color: var(--dim);
+      padding: .2rem 0;
+      transition: color .2s ease;
+    }
+    .pw-req.ok { color: var(--success); }
+    .pw-check {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .pw-req.ok .pw-check {
+      background: var(--success);
+      border-color: var(--success);
+    }
+    .pw-req.ok .pw-check::after {
+      content: '✓';
+      color: #fff;
+      font-size: .65rem;
+      font-weight: 700;
+    }
+
+    /* tabs */
+    .tabs {
+      display: flex;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 1.5rem;
+    }
+    .tab {
+      flex: 1;
+      padding: .7rem 1rem;
+      text-align: center;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      font-size: .8125rem;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+    .tab.active {
+      background: var(--orange);
+      color: #fff;
+    }
+
+    /* divider */
+    .divider {
+      display: flex; align-items: center; gap: 1rem;
+      margin: 1.25rem 0;
+      color: var(--dim);
+      font-size: .75rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px;
+      background: rgba(255,255,255,.08);
+    }
+
+    /* social auth */
+    .social-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem;
+      margin-bottom: 1rem;
+    }
+    .social-btn {
+      display: flex; align-items: center; justify-content: center;
+      gap: .5rem;
+      padding: .75rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      color: var(--white);
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      font-size: .85rem;
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+    .social-btn:hover {
+      border-color: rgba(255,255,255,.25);
+      background: rgba(255,255,255,.06);
+    }
+
+    /* ─── MODAL ─── */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(2, 6, 14, .72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    .modal-backdrop.open { display: flex; animation: fadeIn .25s ease; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 460px;
+      max-height: 92vh;
+      overflow-y: auto;
+      position: relative;
+      animation: slideUp .35s cubic-bezier(.15,.85,.3,1);
+    }
+    .modal.wide { max-width: 720px; }
+    .modal-head {
+      padding: 1.75rem 2rem 1.25rem;
+      position: sticky; top: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      z-index: 2;
+    }
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      margin-bottom: .25rem;
+    }
+    .modal-sub {
+      font-size: .875rem;
+      color: var(--muted);
+    }
+    .modal-close {
+      position: absolute;
+      top: 1.25rem; right: 1.25rem;
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s ease;
+    }
+    .modal-close:hover {
+      background: rgba(255,255,255,.08);
+      color: var(--white);
+    }
+    .modal-body { padding: 1.5rem 2rem 2rem; }
+
+    /* ─── CART DRAWER ─── */
+    .drawer-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(2, 6, 14, .6);
+      backdrop-filter: blur(6px);
+      z-index: 999;
+      display: none;
+      animation: fadeIn .2s ease;
+    }
+    .drawer-backdrop.open { display: block; }
+    .drawer {
+      position: fixed;
+      top: 0; right: 0; bottom: 0;
+      width: 100%;
+      max-width: 440px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      z-index: 1000;
+      transform: translateX(100%);
+      transition: transform .35s cubic-bezier(.15,.85,.3,1);
+      display: flex; flex-direction: column;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-head {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .drawer-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 1rem 1.5rem; }
+    .drawer-foot {
+      padding: 1.5rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg-mid);
+    }
+
+    .cart-item {
+      display: grid;
+      grid-template-columns: 60px 1fr auto;
+      gap: 1rem;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+    .cart-item:last-child { border-bottom: none; }
+    .cart-item-img {
+      width: 60px; height: 60px;
+      border-radius: 10px;
+      background: rgba(255,106,26,.08);
+      border: 1px solid rgba(255,106,26,.18);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cart-item-name { font-weight: 600; font-size: .9375rem; margin-bottom: .15rem; }
+    .cart-item-tier { font-size: .75rem; color: var(--muted); }
+    .cart-item-price { font-weight: 700; font-size: .95rem; }
+    .qty-row {
+      display: inline-flex; align-items: center; gap: .5rem;
+      margin-top: .35rem;
+    }
+    .qty-btn {
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.1);
+      color: var(--muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem;
+      font-weight: 700;
+    }
+    .qty-btn:hover { color: var(--white); border-color: rgba(255,106,26,.4); }
+    .qty-num { font-size: .8125rem; min-width: 18px; text-align: center; font-weight: 600; }
+    .remove-btn {
+      background: none; border: none;
+      color: var(--dim);
+      font-size: .7rem;
+      cursor: pointer;
+      margin-top: .35rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .remove-btn:hover { color: var(--error); }
+
+    .cart-empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--muted);
+    }
+    .cart-empty svg { margin: 0 auto 1rem; opacity: .4; }
+
+    .cart-totals { font-size: .875rem; }
+    .cart-totals-row {
+      display: flex; justify-content: space-between;
+      padding: .35rem 0;
+      color: var(--muted);
+    }
+    .cart-totals-row.total {
+      border-top: 1px solid var(--border);
+      margin-top: .5rem;
+      padding-top: .75rem;
+      color: var(--white);
+      font-weight: 700;
+      font-size: 1.0625rem;
+    }
+
+    /* checkout */
+    .checkout-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 2rem;
+    }
+    .checkout-section {
+      margin-bottom: 2rem;
+    }
+    .checkout-section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .checkout-section-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--orange);
+      color: #fff;
+      font-size: .75rem;
+      font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .checkout-summary {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      position: sticky;
+      top: 1rem;
+      align-self: start;
+    }
+    .summary-item {
+      display: flex; justify-content: space-between;
+      padding: .55rem 0;
+      font-size: .875rem;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .summary-item:last-of-type { border-bottom: none; padding-bottom: 1rem; }
+
+    /* payment radios */
+    .pay-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .625rem;
+      margin-bottom: 1rem;
+    }
+    .pay-opt {
+      position: relative;
+      cursor: pointer;
+    }
+    .pay-opt input { position: absolute; opacity: 0; pointer-events: none; }
+    .pay-opt-box {
+      padding: .9rem .5rem;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 10px;
+      text-align: center;
+      transition: all .2s ease;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      font-size: .8rem;
+    }
+    .pay-opt input:checked + .pay-opt-box {
+      border-color: var(--orange);
+      background: rgba(255,106,26,.08);
+      color: var(--white);
+    }
+    .pay-opt-box svg { margin: 0 auto .35rem; display: block; }
+    .pay-opt-box span { color: var(--muted); }
+    .pay-opt input:checked + .pay-opt-box span { color: var(--white); }
+
+    /* success state */
+    .success-state {
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+    .success-icon {
+      width: 64px; height: 64px;
+      margin: 0 auto 1.25rem;
+      border-radius: 50%;
+      background: rgba(40, 199, 111, .12);
+      border: 1px solid rgba(40, 199, 111, .35);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--success);
+    }
+
+    /* toast */
+    .toast {
+      position: fixed;
+      top: 90px;
+      right: 1.5rem;
+      z-index: 2000;
+      background: var(--card);
+      border: 1px solid rgba(40, 199, 111, .4);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,.4);
+      font-size: .875rem;
+      display: flex; align-items: center; gap: .65rem;
+      transform: translateX(120%);
+      transition: transform .35s cubic-bezier(.15,.85,.3,1);
+      max-width: 320px;
+    }
+    .toast.show { transform: translateX(0); }
+    .toast-ic {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--success);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      color: #fff;
+      font-size: .75rem;
+      font-weight: 700;
+    }
+
+    /* SECTIONS */
+    .section { padding: 7rem 0; }
+    .section-cta { padding: 9rem 0; }
+
+    /* animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px) scale(.97); }
+      to { opacity: 1; transform: none; }
+    }
+    .fu { opacity: 0; animation: fadeUp .85s cubic-bezier(.15,.85,.3,1) forwards; }
+    .a1 { animation-delay: .05s; }
+    .a2 { animation-delay: .18s; }
+    .a3 { animation-delay: .32s; }
+    .a4 { animation-delay: .48s; }
+    .a5 { animation-delay: .64s; }
+
+    .reveal {
+      opacity: 0; transform: translateY(30px);
+      transition: opacity .7s cubic-bezier(.15,.85,.3,1), transform .7s cubic-bezier(.15,.85,.3,1);
+    }
+    .reveal.in { opacity: 1; transform: none; }
+    .r1 { transition-delay: .05s; }
+    .r2 { transition-delay: .14s; }
+    .r3 { transition-delay: .23s; }
+    .r4 { transition-delay: .32s; }
+
+    /* RESPONSIVE */
+    @media (max-width: 1024px) {
+      .feat-grid-mini { grid-template-columns: repeat(2, 1fr); }
+      .checkout-grid { grid-template-columns: 1fr; }
+      .checkout-summary { position: static; }
+    }
+    @media (max-width: 900px) {
+      .hero-grid         { grid-template-columns: 1fr; gap: 3.5rem; padding-top: 7.5rem; }
+      .hero-illustration { display: none !important; }
+      .steps             { grid-template-columns: 1fr; }
+      .step              { border-right: none; border-bottom: 1px solid var(--border); }
+      .step:last-child   { border-bottom: none; }
+      .surface-grid      { grid-template-columns: 1fr; }
+      .problem-grid      { grid-template-columns: 1fr; }
+      .feat-grid-main    { grid-template-columns: 1fr; }
+      .shop-grid         { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .feat-grid-mini { grid-template-columns: 1fr; }
+      #nav, #nav.stuck { padding-left: 1.25rem; padding-right: 1.25rem; }
+      .wrap { padding-left: 1.25rem; padding-right: 1.25rem; }
+      .section { padding: 5rem 0; }
+      .nav-right .desktop-only { display: none; }
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+      .modal { max-width: 100%; }
+      .modal-head, .modal-body { padding-left: 1.25rem; padding-right: 1.25rem; }
+    }
+    @media (max-width: 540px) {
+      .hero-stats { flex-direction: column; gap: 1.25rem; }
+      .hstat { border-right: none; margin-right: 0; padding-right: 0; }
+      .pay-options { grid-template-columns: 1fr; }
+    }
+
+    /* ─── DEMO VIDEO ─── */
+    #demo-video {
+      position: relative;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-mid) 100%);
+      overflow: hidden;
+    }
+    #demo-video::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 50% 50% at 20% 20%, rgba(255,106,26,.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 80% 80%, rgba(255,106,26,.05) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .video-frame {
+      position: relative;
+      max-width: 960px;
+      margin: 0 auto;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(255,106,26,.18);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,.04),
+        0 30px 80px rgba(0,0,0,.5),
+        0 0 100px rgba(255,106,26,.08);
+      aspect-ratio: 16 / 9;
+      background: #050D1A;
+    }
+    .video-frame::before {
+      /* animated gradient border glow */
+      content: '';
+      position: absolute; inset: -2px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, transparent 30%, rgba(255,106,26,.35) 50%, transparent 70%);
+      background-size: 200% 200%;
+      animation: borderShimmer 4s ease-in-out infinite;
+      z-index: -1;
+      opacity: .6;
+    }
+    @keyframes borderShimmer {
+      0%, 100% { background-position: 0% 0%; }
+      50% { background-position: 100% 100%; }
+    }
+    .demo-svg {
+      width: 100%; height: 100%;
+      display: block;
+    }
+    .demo-overlay {
+      position: absolute;
+      top: 1rem; left: 1rem;
+      display: flex; align-items: center; gap: .55rem;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: .5rem .85rem;
+      border-radius: 100px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #fff;
+      z-index: 2;
+    }
+    .demo-live-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #ff3b3b;
+      animation: livePulse 1.5s ease-in-out infinite;
+    }
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255,59,59,.6); }
+      50% { opacity: .7; box-shadow: 0 0 0 6px rgba(255,59,59,0); }
+    }
+    .demo-counter {
+      position: absolute;
+      top: 1rem; right: 1rem;
+      background: rgba(255,106,26,.16);
+      border: 1px solid rgba(255,106,26,.3);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: .55rem 1rem;
+      border-radius: 12px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: .85rem;
+      color: #fff;
+      z-index: 2;
+    }
+    .demo-counter span { color: var(--orange); }
+    .demo-bottom-bar {
+      position: absolute;
+      bottom: 1rem; left: 1rem; right: 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: .6rem 1rem;
+      border-radius: 12px;
+      z-index: 2;
+      font-size: .8rem;
+      color: var(--white);
+    }
+    .demo-bottom-bar .label {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+    }
+    .demo-progress {
+      flex: 1;
+      height: 3px;
+      background: rgba(255,255,255,.15);
+      border-radius: 100px;
+      margin: 0 1rem;
+      overflow: hidden;
+      position: relative;
+    }
+    .demo-progress::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      height: 100%;
+      width: 100%;
+      background: var(--orange);
+      transform-origin: left;
+      animation: progressFill 12s linear infinite;
+    }
+    @keyframes progressFill {
+      0% { transform: scaleX(0); }
+      100% { transform: scaleX(1); }
+    }
+
+    /* Robot moving across the floor */
+    .robot-vehicle {
+      animation: robotPath 12s linear infinite;
+      transform-origin: center;
+    }
+    @keyframes robotPath {
+      0%   { transform: translate(0px, 0px) rotate(0deg); }
+      12%  { transform: translate(120px, 0px) rotate(45deg); }
+      18%  { transform: translate(180px, 60px) rotate(90deg); }
+      28%  { transform: translate(180px, 120px) rotate(135deg); }
+      35%  { transform: translate(60px, 140px) rotate(180deg); }
+      42%  { transform: translate(-80px, 130px) rotate(225deg); }
+      50%  { transform: translate(-180px, 70px) rotate(270deg); }
+      58%  { transform: translate(-200px, -20px) rotate(315deg); }
+      66%  { transform: translate(-100px, -80px) rotate(0deg); }
+      75%  { transform: translate(40px, -100px) rotate(45deg); }
+      85%  { transform: translate(160px, -60px) rotate(90deg); }
+      100% { transform: translate(0px, 0px) rotate(0deg); }
+    }
+    .ball-collect {
+      transform-origin: center;
+      animation: ballDisappear 12s linear infinite;
+    }
+    @keyframes ballDisappear {
+      0%, var(--show-until, 50%) { opacity: 1; transform: scale(1); }
+      calc(var(--show-until, 50%) + 4%) { opacity: 0; transform: scale(0); }
+      calc(var(--show-until, 50%) + 4.1%), 100% { opacity: 0; transform: scale(0); }
+    }
+    /* Simpler per-ball delays using CSS animation-delay isn't viable since opacity must drop mid-animation. Use staggered keyframes via classes */
+    .ball-1  { animation: ballGone1  12s linear infinite; }
+    .ball-2  { animation: ballGone2  12s linear infinite; }
+    .ball-3  { animation: ballGone3  12s linear infinite; }
+    .ball-4  { animation: ballGone4  12s linear infinite; }
+    .ball-5  { animation: ballGone5  12s linear infinite; }
+    .ball-6  { animation: ballGone6  12s linear infinite; }
+    .ball-7  { animation: ballGone7  12s linear infinite; }
+    .ball-8  { animation: ballGone8  12s linear infinite; }
+    .ball-9  { animation: ballGone9  12s linear infinite; }
+    .ball-10 { animation: ballGone10 12s linear infinite; }
+    .ball-11 { animation: ballGone11 12s linear infinite; }
+    .ball-12 { animation: ballGone12 12s linear infinite; }
+    @keyframes ballGone1  { 0%,10% {opacity:1;transform:scale(1)} 12%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+    @keyframes ballGone2  { 0%,16% {opacity:1;transform:scale(1)} 18%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+    @keyframes ballGone3  { 0%,22% {opacity:1;transform:scale(1)} 24%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+    @keyframes ballGone4  { 0%,28% {opacity:1;transform:scale(1)} 30%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+    @keyframes ballGone5  { 0%,33% {opacity:1;transform:scale(1)} 35%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+    @keyframes ballGone6  { 0%,40% {opacity:1;transform:scale(1)} 42%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+    @keyframes ballGone7  { 0%,48% {opacity:1;transform:scale(1)} 50%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+    @keyframes ballGone8  { 0%,56% {opacity:1;transform:scale(1)} 58%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+    @keyframes ballGone9  { 0%,64% {opacity:1;transform:scale(1)} 66%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+    @keyframes ballGone10 { 0%,73% {opacity:1;transform:scale(1)} 75%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+    @keyframes ballGone11 { 0%,82% {opacity:1;transform:scale(1)} 84%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+    @keyframes ballGone12 { 0%,92% {opacity:1;transform:scale(1)} 94%,99% {opacity:0;transform:scale(0)} 100% {opacity:1;transform:scale(1)} }
+
+    .demo-features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-top: 3rem;
+      max-width: 960px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .demo-feat {
+      text-align: center;
+      padding: 1.5rem 1rem;
+    }
+    .demo-feat-icon {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: rgba(255,106,26,.1);
+      border: 1px solid rgba(255,106,26,.25);
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-bottom: .85rem;
+      color: var(--orange);
+    }
+    .demo-feat h4 { font-size: 1rem; margin-bottom: .35rem; font-weight: 700; }
+    .demo-feat p { font-size: .85rem; color: var(--muted); line-height: 1.6; }
+
+    @media (max-width: 700px) {
+      .demo-features { grid-template-columns: 1fr; gap: 1rem; }
+      .demo-counter { font-size: .7rem; padding: .4rem .7rem; top: .6rem; right: .6rem; }
+      .demo-overlay { font-size: .6rem; padding: .35rem .65rem; top: .6rem; left: .6rem; }
+      .demo-bottom-bar { font-size: .7rem; padding: .4rem .75rem; }
+    }
+
+    /* ─── MORE ANIMATIONS ─── */
+
+    /* Scroll progress bar at top */
+    .scroll-progress {
+      position: fixed;
+      top: 0; left: 0;
+      height: 3px;
+      width: 0%;
+      background: linear-gradient(90deg, var(--orange), var(--orange-light));
+      z-index: 999;
+      transition: width .12s ease-out;
+      box-shadow: 0 0 10px rgba(255,106,26,.6);
+    }
+
+    /* Floating animation for hero illustration */
+    .hero-illustration {
+      animation: heroFloat 6s ease-in-out infinite;
+    }
+    @keyframes heroFloat {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-12px); }
+    }
+
+    /* Pulse glow on primary CTAs */
+    .btn-fill {
+      position: relative;
+    }
+    .btn-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: 0 0 0 0 rgba(255,106,26,.5);
+      animation: btnPulse 2.5s ease-out infinite;
+      pointer-events: none;
+    }
+    @keyframes btnPulse {
+      0%   { box-shadow: 0 0 0 0 rgba(255,106,26,.4); }
+      70%  { box-shadow: 0 0 0 14px rgba(255,106,26,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,106,26,0); }
+    }
+    /* Disable button pulse inside modals/cart to avoid distraction */
+    .modal .btn-fill::after, .drawer .btn-fill::after,
+    .checkout-summary .btn-fill::after { display: none; }
+
+    /* Gradient shimmer on accent text */
+    .accent {
+      background: linear-gradient(90deg, #FF6A1A 0%, #FFA46B 50%, #FF6A1A 100%);
+      background-size: 200% auto;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: accentShimmer 4s linear infinite;
+    }
+    @keyframes accentShimmer {
+      0%   { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+
+    /* Shine sweep across featured product card */
+    .product-card.featured {
+      position: relative;
+      overflow: hidden;
+    }
+    .product-card.featured::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(120deg, transparent, rgba(255,255,255,.06), transparent);
+      animation: shine 4.5s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 1;
+    }
+    @keyframes shine {
+      0%, 50% { left: -100%; }
+      100% { left: 200%; }
+    }
+
+    /* Bounce on stat numbers when they animate in */
+    .hstat.counted .hstat-n {
+      animation: numberPop .6s cubic-bezier(.34, 1.56, .64, 1);
+    }
+    @keyframes numberPop {
+      0%   { transform: scale(.5); opacity: 0; }
+      60%  { transform: scale(1.1); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Floating particles in hero */
+    .hero-particles {
+      position: absolute; inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .particle {
+      position: absolute;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--orange);
+      opacity: 0;
+      animation: particleFloat 15s linear infinite;
+    }
+    @keyframes particleFloat {
+      0%   { transform: translateY(100vh) translateX(0); opacity: 0; }
+      10%  { opacity: .4; }
+      90%  { opacity: .4; }
+      100% { transform: translateY(-20vh) translateX(40px); opacity: 0; }
+    }
+
+    /* Card tilt on hover */
+    .product-card, .feat-card, .step, .pain-row, .mini-card, .card {
+      will-change: transform;
+    }
+    .product-card:hover { transform: translateY(-6px) scale(1.01); }
+
+    /* Wiggle on icons on hover (cards) */
+    .step-icon svg, .pain-ic svg, .mini-ic svg, .demo-feat-icon svg {
+      transition: transform .35s cubic-bezier(.34, 1.56, .64, 1);
+    }
+    .step:hover .step-icon svg,
+    .pain-row:hover .pain-ic svg,
+    .mini-card:hover .mini-ic svg,
+    .demo-feat:hover .demo-feat-icon svg {
+      transform: rotate(-8deg) scale(1.15);
+    }
+
+    /* Smooth fade-in for new sections */
+    @keyframes slideInUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Glow rings on product images */
+    .product-vis {
+      position: relative;
+      overflow: hidden;
+    }
+    .product-vis::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(255,106,26,.12), transparent 60%);
+      opacity: 0;
+      transition: opacity .4s ease;
+    }
+    .product-card:hover .product-vis::after { opacity: 1; }
+
+    /* Reduce motion for users who prefer it */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+      .robot-vehicle, .ball-collect,
+      .ball-1, .ball-2, .ball-3, .ball-4, .ball-5, .ball-6,
+      .ball-7, .ball-8, .ball-9, .ball-10, .ball-11, .ball-12 {
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- SCROLL PROGRESS BAR -->
+<div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════════════════════
+     NAVIGATION
+═══════════════════════════════════════════ -->
+<header>
+  <nav id="nav" aria-label="Main navigation">
+
+    <a href="#hero" class="logo" aria-label="Vali — back to top">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <circle cx="16" cy="16" r="14.5" fill="rgba(255,106,26,0.12)" stroke="#FF6A1A" stroke-width="1.5"/>
+        <path d="M3 11.5 Q16 5.5 29 11.5" stroke="#FF6A1A" stroke-width="1.75" stroke-linecap="round" fill="none"/>
+        <path d="M3 20.5 Q16 26.5 29 20.5" stroke="#FF6A1A" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.5"/>
+        <circle cx="16" cy="16" r="3" fill="#FF6A1A"/>
+      </svg>
+      <span class="logo-text">Val<em>i</em></span>
+    </a>
+
+    <div class="nav-right">
+      <a href="#shop" class="btn btn-ghost btn-md desktop-only">Shop</a>
+      <a href="#demo-video" class="btn btn-ghost btn-md desktop-only">Demo</a>
+      <a href="#how-it-works" class="btn btn-ghost btn-md desktop-only">How it works</a>
+
+      <!-- Auth area (toggled by JS) -->
+      <button type="button" class="btn btn-outline btn-md" id="auth-btn" onclick="openAuth('login')">
+        Sign In
+      </button>
+      <button type="button" class="user-chip" id="user-chip" style="display:none;" onclick="openAccount()">
+        <span class="user-avatar" id="user-avatar">U</span>
+        <span id="user-name-short">Account</span>
+      </button>
+
+      <!-- Cart -->
+      <button type="button" class="cart-btn" onclick="openCart()" aria-label="Open cart">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M3 4H5L6.5 13H16L17.5 6.5H7" stroke="#FF6A1A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="8" cy="16.5" r="1.4" fill="#FF6A1A"/>
+          <circle cx="15" cy="16.5" r="1.4" fill="#FF6A1A"/>
+        </svg>
+        <span class="cart-badge hidden" id="cart-badge">0</span>
+      </button>
+    </div>
+
+  </nav>
+</header>
+
+
+<main>
+
+<!-- ═══════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════ -->
+<section id="hero" aria-labelledby="hero-h1">
+  <div class="hero-radial" aria-hidden="true"></div>
+  <div class="hero-dots"   aria-hidden="true"></div>
+  <div class="hero-particles" id="hero-particles" aria-hidden="true"></div>
+
+  <div class="wrap" style="width:100%;">
+    <div class="hero-grid">
+
+      <div>
+        <div class="tag fu a1">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <ellipse cx="5" cy="5" rx="4.25" ry="4.75" stroke="#FF6A1A" stroke-width="1.25"/>
+            <line x1="8.25" y1="8.75" x2="11.5" y2="12" stroke="#FF6A1A" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          Multi-ball training · AI ball pickup
+        </div>
+
+        <h1 id="hero-h1" class="display fu a2">
+          Stop Picking Up<br>
+          Balls.<br>
+          <span class="accent">Start Coaching.</span>
+        </h1>
+
+        <p class="lead fu a3" style="max-width:480px;margin-top:1.5rem;">
+          Vali is an AI-powered ball picker built for table tennis multi-ball sessions. It collects every 40mm ball scattered across the floor — under tables, in corners, against every wall — so training never has to stop.
+        </p>
+
+        <div class="hero-stats fu a4" aria-label="Key numbers">
+          <div class="hstat">
+            <div class="hstat-n" id="hero-counter">0</div>
+            <div class="hstat-l">minutes saved per session</div>
+          </div>
+          <div class="hstat">
+            <div class="hstat-n">100</div>
+            <div class="hstat-l">ball hopper capacity</div>
+          </div>
+          <div class="hstat">
+            <div class="hstat-n">98%</div>
+            <div class="hstat-l">detection accuracy</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:.875rem;flex-wrap:wrap;margin-top:2.75rem;" class="fu a5">
+          <a href="#shop" class="btn btn-fill btn-lg">
+            Shop Vali
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+              <path d="M3 7.5H12M8.5 3.5L12 7.5L8.5 11.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+          <a href="#how-it-works" class="btn btn-ghost btn-lg">See how it works</a>
+        </div>
+      </div>
+
+      <div class="hero-illustration" style="display:flex;justify-content:center;align-items:center;" aria-hidden="true">
+        <svg width="460" height="490" viewBox="0 0 460 490" fill="none" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;">
+          <ellipse cx="230" cy="200" rx="200" ry="135" fill="rgba(255,106,26,0.04)"/>
+          <rect x="48" y="44" width="364" height="202" rx="6" fill="#071E38" stroke="rgba(255,255,255,0.16)" stroke-width="1.75"/>
+          <rect x="53" y="49" width="354" height="192" rx="4" fill="none" stroke="rgba(255,255,255,0.48)" stroke-width="1"/>
+          <line x1="230" y1="49" x2="230" y2="241" stroke="rgba(255,255,255,0.26)" stroke-width=".75"/>
+          <rect x="40" y="136" width="380" height="8" rx="2.5" fill="#040C18" stroke="rgba(255,255,255,0.72)" stroke-width="1.25"/>
+          <rect x="40" y="131" width="5" height="18" rx="1.5" fill="rgba(255,255,255,0.5)"/>
+          <rect x="415" y="131" width="5" height="18" rx="1.5" fill="rgba(255,255,255,0.5)"/>
+          <rect x="60" y="244" width="9" height="24" rx="2" fill="rgba(255,255,255,0.09)"/>
+          <rect x="391" y="244" width="9" height="24" rx="2" fill="rgba(255,255,255,0.09)"/>
+          <rect x="165" y="310" width="130" height="92" rx="23" fill="#090909" stroke="rgba(255,106,26,0.5)" stroke-width="1.75"/>
+          <rect x="165" y="310" width="130" height="38" rx="23" fill="rgba(255,106,26,0.055)"/>
+          <rect x="169" y="314" width="122" height="30" rx="17" fill="none" stroke="rgba(255,106,26,0.1)" stroke-width=".75"/>
+          <rect x="183" y="320" width="94" height="19" rx="6.5" fill="#040404" stroke="rgba(255,106,26,0.2)" stroke-width="1"/>
+          <rect x="186" y="322.5" width="24" height="14" rx="4" fill="rgba(255,106,26,0.11)" stroke="rgba(255,106,26,0.8)" stroke-width=".75">
+            <animate attributeName="opacity" values=".4;1;.4" dur="1.7s" repeatCount="indefinite"/>
+          </rect>
+          <rect x="216" y="322.5" width="24" height="14" rx="4" fill="rgba(255,106,26,0.07)" stroke="rgba(255,106,26,0.5)" stroke-width=".75">
+            <animate attributeName="opacity" values="1;.3;1" dur="2.1s" repeatCount="indefinite"/>
+          </rect>
+          <rect x="246" y="322.5" width="24" height="14" rx="4" fill="rgba(255,106,26,0.11)" stroke="rgba(255,106,26,0.8)" stroke-width=".75">
+            <animate attributeName="opacity" values=".3;1;.3" dur="2.5s" repeatCount="indefinite"/>
+          </rect>
+          <rect x="186" y="302" width="88" height="11" rx="5.5" fill="#070707" stroke="rgba(255,106,26,0.42)" stroke-width="1.5"/>
+          <line x1="200" y1="302" x2="200" y2="313" stroke="rgba(255,106,26,0.26)" stroke-width="1"/>
+          <line x1="214" y1="302" x2="214" y2="313" stroke="rgba(255,106,26,0.26)" stroke-width="1"/>
+          <line x1="230" y1="302" x2="230" y2="313" stroke="rgba(255,106,26,0.26)" stroke-width="1"/>
+          <line x1="246" y1="302" x2="246" y2="313" stroke="rgba(255,106,26,0.26)" stroke-width="1"/>
+          <line x1="260" y1="302" x2="260" y2="313" stroke="rgba(255,106,26,0.26)" stroke-width="1"/>
+          <ellipse cx="230" cy="366" rx="39" ry="30" fill="#090909" stroke="rgba(255,106,26,0.28)" stroke-width="1.5"/>
+          <ellipse cx="230" cy="366" rx="29" ry="22" fill="#0C0C0C" stroke="rgba(255,106,26,0.09)" stroke-width="1"/>
+          <circle cx="219" cy="359" r="8.5" fill="#FF6A1A" opacity=".9"><animate attributeName="r" values="8.5;9.1;8.5" dur="1.6s" repeatCount="indefinite"/></circle>
+          <circle cx="241" cy="365" r="8.5" fill="#FF6A1A" opacity=".65"><animate attributeName="r" values="8.5;9.1;8.5" dur="2s" repeatCount="indefinite"/></circle>
+          <circle cx="228" cy="376" r="7.5" fill="#FF6A1A" opacity=".48"><animate attributeName="r" values="7.5;8;7.5" dur="2.3s" repeatCount="indefinite"/></circle>
+          <ellipse cx="172" cy="355" rx="14" ry="22" fill="#101010" stroke="rgba(255,106,26,0.32)" stroke-width="1.5">
+            <animateTransform attributeName="transform" type="rotate" from="0 172 355" to="360 172 355" dur="2.7s" repeatCount="indefinite"/>
+          </ellipse>
+          <line x1="172" y1="335" x2="172" y2="375" stroke="rgba(255,106,26,0.55)" stroke-width="1.5">
+            <animateTransform attributeName="transform" type="rotate" from="0 172 355" to="360 172 355" dur="2.7s" repeatCount="indefinite"/>
+          </line>
+          <line x1="156" y1="355" x2="188" y2="355" stroke="rgba(255,106,26,0.55)" stroke-width="1.5">
+            <animateTransform attributeName="transform" type="rotate" from="0 172 355" to="360 172 355" dur="2.7s" repeatCount="indefinite"/>
+          </line>
+          <ellipse cx="288" cy="355" rx="14" ry="22" fill="#101010" stroke="rgba(255,106,26,0.32)" stroke-width="1.5">
+            <animateTransform attributeName="transform" type="rotate" from="360 288 355" to="0 288 355" dur="2.7s" repeatCount="indefinite"/>
+          </ellipse>
+          <line x1="288" y1="335" x2="288" y2="375" stroke="rgba(255,106,26,0.55)" stroke-width="1.5">
+            <animateTransform attributeName="transform" type="rotate" from="360 288 355" to="0 288 355" dur="2.7s" repeatCount="indefinite"/>
+          </line>
+          <line x1="272" y1="355" x2="304" y2="355" stroke="rgba(255,106,26,0.55)" stroke-width="1.5">
+            <animateTransform attributeName="transform" type="rotate" from="360 288 355" to="0 288 355" dur="2.7s" repeatCount="indefinite"/>
+          </line>
+          <g>
+            <circle cx="16" cy="150" r="10" fill="#FF6A1A" opacity=".85"><animate attributeName="cy" values="150;143;150" dur="2s" repeatCount="indefinite"/></circle>
+            <ellipse cx="16" cy="163" rx="7.5" ry="2.5" fill="rgba(0,0,0,.28)"><animate attributeName="ry" values="2.5;1.2;2.5" dur="2s" repeatCount="indefinite"/></ellipse>
+            <circle cx="16" cy="150" r="10" stroke="#FF6A1A" stroke-width="1" fill="none" opacity=".32">
+              <animate attributeName="r" values="10;21;10" dur="2s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values=".32;0;.32" dur="2s" repeatCount="indefinite"/>
+            </circle>
+          </g>
+          <g>
+            <circle cx="444" cy="124" r="10" fill="#FF6A1A" opacity=".7"><animate attributeName="cy" values="124;117;124" dur="1.65s" repeatCount="indefinite"/></circle>
+            <ellipse cx="444" cy="137" rx="7.5" ry="2.5" fill="rgba(0,0,0,.25)"><animate attributeName="ry" values="2.5;1.2;2.5" dur="1.65s" repeatCount="indefinite"/></ellipse>
+            <circle cx="444" cy="124" r="10" stroke="#FF6A1A" stroke-width="1" fill="none" opacity=".28">
+              <animate attributeName="r" values="10;21;10" dur="1.65s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values=".28;0;.28" dur="1.65s" repeatCount="indefinite"/>
+            </circle>
+          </g>
+          <g>
+            <circle cx="65" cy="420" r="10" fill="#FF6A1A" opacity=".62"><animate attributeName="cy" values="420;413;420" dur="2.45s" repeatCount="indefinite"/></circle>
+            <ellipse cx="65" cy="433" rx="7.5" ry="2.5" fill="rgba(0,0,0,.22)"><animate attributeName="ry" values="2.5;1.2;2.5" dur="2.45s" repeatCount="indefinite"/></ellipse>
+          </g>
+          <g>
+            <circle cx="400" cy="428" r="10" fill="#FF6A1A" opacity=".75"><animate attributeName="cy" values="428;421;428" dur="1.9s" repeatCount="indefinite"/></circle>
+            <ellipse cx="400" cy="441" rx="7.5" ry="2.5" fill="rgba(0,0,0,.22)"><animate attributeName="ry" values="2.5;1.2;2.5" dur="1.9s" repeatCount="indefinite"/></ellipse>
+          </g>
+          <g>
+            <circle cx="158" cy="17" r="10" fill="#FF6A1A" opacity=".55"><animate attributeName="cy" values="17;10;17" dur="1.5s" repeatCount="indefinite"/></circle>
+            <ellipse cx="158" cy="30" rx="7.5" ry="2.5" fill="rgba(0,0,0,.2)"><animate attributeName="ry" values="2.5;1.2;2.5" dur="1.5s" repeatCount="indefinite"/></ellipse>
+          </g>
+          <g>
+            <circle cx="447" cy="365" r="10" fill="#FF6A1A" opacity=".58"><animate attributeName="cy" values="365;358;365" dur="2.2s" repeatCount="indefinite"/></circle>
+            <ellipse cx="447" cy="378" rx="7.5" ry="2.5" fill="rgba(0,0,0,.2)"><animate attributeName="ry" values="2.5;1.2;2.5" dur="2.2s" repeatCount="indefinite"/></ellipse>
+          </g>
+          <line x1="180" y1="308" x2="16" y2="150" stroke="#FF6A1A" stroke-width="1" stroke-dasharray="5 9" opacity=".18"><animate attributeName="opacity" values=".08;.52;.08" dur="2s" repeatCount="indefinite"/></line>
+          <line x1="278" y1="308" x2="444" y2="124" stroke="#FF6A1A" stroke-width="1" stroke-dasharray="5 9" opacity=".18"><animate attributeName="opacity" values=".08;.52;.08" dur="1.65s" repeatCount="indefinite"/></line>
+          <line x1="182" y1="390" x2="65" y2="420" stroke="#FF6A1A" stroke-width="1" stroke-dasharray="5 9" opacity=".13"><animate attributeName="opacity" values=".06;.38;.06" dur="2.45s" repeatCount="indefinite"/></line>
+          <line x1="278" y1="390" x2="400" y2="428" stroke="#FF6A1A" stroke-width="1" stroke-dasharray="5 9" opacity=".13"><animate attributeName="opacity" values=".06;.38;.06" dur="1.9s" repeatCount="indefinite"/></line>
+          <line x1="202" y1="304" x2="158" y2="17" stroke="#FF6A1A" stroke-width="1" stroke-dasharray="5 9" opacity=".1"><animate attributeName="opacity" values=".05;.3;.05" dur="1.5s" repeatCount="indefinite"/></line>
+          <line x1="280" y1="360" x2="447" y2="365" stroke="#FF6A1A" stroke-width="1" stroke-dasharray="5 9" opacity=".1"><animate attributeName="opacity" values=".05;.3;.05" dur="2.2s" repeatCount="indefinite"/></line>
+          <path d="M332 44 Q374 -4 416 16" stroke="rgba(255,106,26,.2)" stroke-width="1.2" stroke-dasharray="3 6" fill="none"/>
+          <circle cx="416" cy="16" r="5.5" fill="#FF6A1A" opacity=".28"/>
+        </svg>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="scroll-cue" aria-hidden="true">
+    <span>Scroll</span>
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <path d="M5.5 8.5L11 14L16.5 8.5" stroke="#FF6A1A" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <animate attributeName="opacity" values="1;.18;1" dur="1.5s" repeatCount="indefinite"/>
+      </path>
+    </svg>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════
+     HOW IT WORKS
+═══════════════════════════════════════════ -->
+<section id="how-it-works" class="section" style="background:var(--surface);" aria-labelledby="how-h2">
+  <div class="wrap">
+    <div style="margin-bottom:3.5rem;">
+      <div class="tag reveal">How It Works</div>
+      <h2 id="how-h2" class="section-title reveal r1" style="max-width:560px;">
+        Drop It on the Floor.<br>Walk Away.
+      </h2>
+      <p class="lead reveal r2" style="max-width:460px;margin-top:.875rem;">
+        No setup, no boundary tape, no configuration. Three steps is all it takes.
+      </p>
+    </div>
+
+    <div class="steps-wrapper">
+      <div class="steps">
+        <div class="step reveal r1">
+          <div class="step-n">01</div>
+          <div class="step-icon">
+            <svg width="42" height="42" viewBox="0 0 42 42" fill="none" aria-hidden="true">
+              <rect width="42" height="42" rx="11" fill="rgba(255,106,26,0.1)"/>
+              <circle cx="21" cy="21" r="9.5" stroke="#FF6A1A" stroke-width="1.75" fill="none"/>
+              <line x1="21" y1="11.5" x2="21" y2="21" stroke="#FF6A1A" stroke-width="2" stroke-linecap="round"/>
+              <path d="M14 15.5A9.5 9.5 0 1 0 28 15.5" stroke="#FF6A1A" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+          <h3>Place &amp; Power On</h3>
+          <p>Set Vali anywhere on the floor. One button press and it self-maps the space in under 30 seconds — no cables, no tape, no manual boundaries.</p>
+        </div>
+
+        <div class="step reveal r2">
+          <div class="step-n">02</div>
+          <div class="step-icon">
+            <svg width="42" height="42" viewBox="0 0 42 42" fill="none" aria-hidden="true">
+              <rect width="42" height="42" rx="11" fill="rgba(255,106,26,0.1)"/>
+              <path d="M8 21C8 21 12.5 13 21 13C29.5 13 34 21 34 21C34 21 29.5 29 21 29C12.5 29 8 21 8 21Z" stroke="#FF6A1A" stroke-width="1.75" fill="none"/>
+              <circle cx="21" cy="21" r="4.5" fill="#FF6A1A"/>
+              <circle cx="21" cy="21" r="2" fill="#040C18"/>
+            </svg>
+          </div>
+          <h3>AI Spots Every Ball</h3>
+          <p>Computer vision trained on real multi-ball footage detects every 40mm ball on the floor — under tables, in corners, against walls — at 98%+ accuracy.</p>
+        </div>
+
+        <div class="step reveal r3">
+          <div class="step-n">03</div>
+          <div class="step-icon">
+            <svg width="42" height="42" viewBox="0 0 42 42" fill="none" aria-hidden="true">
+              <rect width="42" height="42" rx="11" fill="rgba(255,106,26,0.1)"/>
+              <path d="M10 17L12.5 31H29.5L32 17" stroke="#FF6A1A" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <line x1="8" y1="17" x2="34" y2="17" stroke="#FF6A1A" stroke-width="1.75" stroke-linecap="round"/>
+              <circle cx="21" cy="23" r="3.25" fill="#FF6A1A" opacity=".8"/>
+              <circle cx="15.5" cy="26" r="2.75" fill="#FF6A1A" opacity=".55"/>
+              <circle cx="26.5" cy="26" r="2.75" fill="#FF6A1A" opacity=".6"/>
+            </svg>
+          </div>
+          <h3>Picks Up. You Coach.</h3>
+          <p>Vali drives to each ball and collects it into the 100-ball hopper. Tip it back into your training basket and you're drilling again instantly — no stopping, no bending down.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════
+     DEMO VIDEO — See It In Action
+═══════════════════════════════════════════ -->
+<section id="demo-video" class="section" aria-labelledby="demo-h2">
+  <div class="wrap" style="position:relative;z-index:2;">
+    <div style="text-align:center;margin-bottom:3rem;">
+      <div class="tag reveal" style="justify-content:center;">Live Demo</div>
+      <h2 id="demo-h2" class="section-title reveal r1" style="max-width:620px;margin:.875rem auto 0;">
+        Watch Vali <span class="accent">Clear the Floor.</span>
+      </h2>
+      <p class="lead reveal r2" style="max-width:540px;margin:.875rem auto 0;">
+        A real-time look at how Vali navigates, identifies, and collects every ball — no human intervention.
+      </p>
+    </div>
+
+    <!-- Video Frame -->
+    <div class="video-frame reveal r1">
+      <!-- Top overlays -->
+      <div class="demo-overlay">
+        <span class="demo-live-dot"></span>
+        <span>Live Capture</span>
+      </div>
+      <div class="demo-counter" id="demo-counter">
+        Balls Collected: <span id="demo-count">0</span>/12
+      </div>
+
+      <!-- Animated Demo SVG -->
+      <svg class="demo-svg" viewBox="0 0 960 540" xmlns="http://www.w3.org/2000/svg" aria-label="Animated demo of Vali robot collecting balls">
+        <defs>
+          <radialGradient id="floorGrad" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stop-color="#0F2238" />
+            <stop offset="100%" stop-color="#050D1A" />
+          </radialGradient>
+          <linearGradient id="robotBody" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FF8C47" />
+            <stop offset="100%" stop-color="#C84500" />
+          </linearGradient>
+          <radialGradient id="ballGrad" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stop-color="#FFFFFF" />
+            <stop offset="100%" stop-color="#E0E0E0" />
+          </radialGradient>
+          <pattern id="gridLines" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,106,26,0.08)" stroke-width="1"/>
+          </pattern>
+        </defs>
+
+        <!-- Floor with subtle grid -->
+        <rect width="960" height="540" fill="url(#floorGrad)"/>
+        <rect width="960" height="540" fill="url(#gridLines)"/>
+
+        <!-- Court markings (table tennis court suggestion) -->
+        <g opacity="0.18" stroke="#FF6A1A" stroke-width="2" fill="none">
+          <rect x="200" y="120" width="560" height="300" rx="4"/>
+          <line x1="480" y1="120" x2="480" y2="420"/>
+          <line x1="200" y1="270" x2="760" y2="270" stroke-dasharray="6 6"/>
+        </g>
+
+        <!-- Title bar bg -->
+        <rect x="0" y="0" width="960" height="60" fill="rgba(0,0,0,0.4)"/>
+
+        <!-- Balls scattered on floor (12 balls) -->
+        <g>
+          <circle class="ball-1"  cx="280" cy="180" r="9" fill="url(#ballGrad)" />
+          <circle class="ball-2"  cx="450" cy="200" r="9" fill="url(#ballGrad)" />
+          <circle class="ball-3"  cx="620" cy="170" r="9" fill="url(#ballGrad)" />
+          <circle class="ball-4"  cx="710" cy="280" r="9" fill="url(#ballGrad)" />
+          <circle class="ball-5"  cx="600" cy="370" r="9" fill="url(#ballGrad)" />
+          <circle class="ball-6"  cx="430" cy="380" r="9" fill="url(#ballGrad)" />
+          <circle class="ball-7"  cx="270" cy="370" r="9" fill="url(#ballGrad)" />
+          <circle class="ball-8"  cx="240" cy="280" r="9" fill="url(#ballGrad)" />
+          <circle class="ball-9"  cx="380" cy="290" r="9" fill="url(#ballGrad)" />
+          <circle class="ball-10" cx="540" cy="290" r="9" fill="url(#ballGrad)" />
+          <circle class="ball-11" cx="500" cy="160" r="9" fill="url(#ballGrad)" />
+          <circle class="ball-12" cx="690" cy="220" r="9" fill="url(#ballGrad)" />
+        </g>
+
+        <!-- Robot (centered at start position 480, 270) -->
+        <g class="robot-vehicle" transform="translate(480, 270)">
+          <!-- Trail/scan light -->
+          <circle cx="0" cy="0" r="55" fill="rgba(255,106,26,0.08)" stroke="rgba(255,106,26,0.25)" stroke-width="1" stroke-dasharray="3 4">
+            <animate attributeName="r" values="55;65;55" dur="2s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values=".7;.3;.7" dur="2s" repeatCount="indefinite"/>
+          </circle>
+          <!-- Robot body -->
+          <rect x="-22" y="-22" width="44" height="44" rx="10" fill="url(#robotBody)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+          <!-- Direction indicator -->
+          <polygon points="0,-26 -6,-18 6,-18" fill="#FFFFFF" opacity="0.9"/>
+          <!-- "Eye" / sensor -->
+          <circle cx="0" cy="0" r="6" fill="#0E1C2E"/>
+          <circle cx="0" cy="0" r="3" fill="#FF6A1A">
+            <animate attributeName="opacity" values="1;.4;1" dur="1.2s" repeatCount="indefinite"/>
+          </circle>
+          <!-- Wheels -->
+          <circle cx="-18" cy="14" r="3.5" fill="#020812"/>
+          <circle cx="18" cy="14" r="3.5" fill="#020812"/>
+        </g>
+
+        <!-- Hopper full indicator (top of robot, ball counter visual) -->
+      </svg>
+
+      <!-- Bottom bar -->
+      <div class="demo-bottom-bar">
+        <span class="label">Real-Time AI Path Planning</span>
+        <div class="demo-progress"></div>
+        <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--orange);">12s cycle</span>
+      </div>
+    </div>
+
+    <!-- Feature highlights below video -->
+    <div class="demo-features reveal r2">
+      <div class="demo-feat">
+        <div class="demo-feat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6m0 10v6M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M1 12h6m10 0h6M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>
+          </svg>
+        </div>
+        <h4>360° Vision</h4>
+        <p>Computer vision scans the entire floor in real time, finding every ball — even under tables.</p>
+      </div>
+      <div class="demo-feat">
+        <div class="demo-feat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        </div>
+        <h4>Smart Pathing</h4>
+        <p>Optimal route planning collects more balls per minute while avoiding obstacles, players, and walls.</p>
+      </div>
+      <div class="demo-feat">
+        <div class="demo-feat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+        </div>
+        <h4>Whisper-Quiet</h4>
+        <p>Operates at under 45 dB — quieter than conversation. Train without interruption.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════
+     WHERE IT WORKS
+═══════════════════════════════════════════ -->
+<section id="surfaces" class="section" style="background:var(--bg-mid);" aria-labelledby="surfaces-h2">
+  <div class="wrap">
+    <div style="text-align:center;margin-bottom:3.5rem;">
+      <div class="tag reveal" style="justify-content:center;">Where It Works</div>
+      <h2 id="surfaces-h2" class="section-title reveal r1">Any Indoor Court. Any Setup.</h2>
+      <p class="lead reveal r2" style="max-width:430px;margin:.875rem auto 0;">
+        One-table home room or 20-table competition hall — if it's flat and indoors, Vali handles it.
+      </p>
+    </div>
+
+    <div class="surface-grid">
+      <div class="card reveal r1">
+        <div style="margin-bottom:1.625rem;">
+          <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+            <rect width="56" height="56" rx="14" fill="rgba(255,106,26,0.1)"/>
+            <rect x="7" y="18" width="42" height="24" rx="3.5" fill="#071E38" stroke="#FF6A1A" stroke-width="1.75"/>
+            <rect x="5" y="28" width="46" height="4.5" rx="1.5" fill="#040C18" stroke="#FF6A1A" stroke-width="1.25"/>
+            <rect x="5" y="26" width="4" height="9" rx="1.5" fill="rgba(255,255,255,0.45)"/>
+            <rect x="47" y="26" width="4" height="9" rx="1.5" fill="rgba(255,255,255,0.45)"/>
+            <line x1="28" y1="18" x2="28" y2="42" stroke="rgba(255,255,255,0.26)" stroke-width=".75"/>
+            <circle cx="14" cy="23.5" r="2.75" fill="#FF6A1A" opacity=".82"/>
+            <circle cx="42" cy="36.5" r="2.75" fill="#FF6A1A" opacity=".62"/>
+          </svg>
+        </div>
+        <h3 style="font-size:1.1875rem;font-weight:700;margin-bottom:.625rem;">Table Tennis Clubs &amp; Halls</h3>
+        <p style="color:var(--muted);line-height:1.72;font-size:.9375rem;">
+          Multi-table halls where multi-ball sessions run back to back. Vali navigates between tables and players, and sweeps the floor clean between every drill set.
+        </p>
+      </div>
+
+      <div class="card reveal r2">
+        <div style="margin-bottom:1.625rem;">
+          <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+            <rect width="56" height="56" rx="14" fill="rgba(255,106,26,0.1)"/>
+            <rect x="8" y="9" width="40" height="38" rx="2.5" fill="none" stroke="#FF6A1A" stroke-width="1.75"/>
+            <line x1="8" y1="30" x2="48" y2="30" stroke="#FF6A1A" stroke-width="1.5"/>
+            <rect x="8" y="9" width="40" height="9" rx="2.5" fill="rgba(255,106,26,0.18)"/>
+            <circle cx="16" cy="38" r="3.25" fill="#FF6A1A" opacity=".7"/>
+            <circle cx="38" cy="43" r="3.25" fill="#FF6A1A" opacity=".5"/>
+            <circle cx="27" cy="37" r="3.25" fill="#FF6A1A" opacity=".6"/>
+          </svg>
+        </div>
+        <h3 style="font-size:1.1875rem;font-weight:700;margin-bottom:.625rem;">Squash Courts</h3>
+        <p style="color:var(--muted);line-height:1.72;font-size:.9375rem;">
+          Enclosed walls mean balls pile into corners fast. Vali's precision navigation handles tight geometry — it reaches every corner, edge, and wall pocket without guidance.
+        </p>
+      </div>
+
+      <div class="card reveal r3">
+        <div style="margin-bottom:1.625rem;">
+          <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden="true">
+            <rect width="56" height="56" rx="14" fill="rgba(255,106,26,0.1)"/>
+            <rect x="8" y="13" width="40" height="30" rx="3" fill="none" stroke="#FF6A1A" stroke-width="1.75"/>
+            <circle cx="16" cy="21" r="3.25" fill="#FF6A1A" opacity=".85"/>
+            <circle cx="28" cy="17" r="3.25" fill="#FF6A1A" opacity=".65"/>
+            <circle cx="40" cy="21" r="3.25" fill="#FF6A1A" opacity=".75"/>
+            <circle cx="20" cy="33" r="3.25" fill="#FF6A1A" opacity=".5"/>
+            <circle cx="38" cy="32" r="3.25" fill="#FF6A1A" opacity=".6"/>
+            <circle cx="30" cy="39" r="3.25" fill="#FF6A1A" opacity=".45"/>
+          </svg>
+        </div>
+        <h3 style="font-size:1.1875rem;font-weight:700;margin-bottom:.625rem;">Any Flat Indoor Space</h3>
+        <p style="color:var(--muted);line-height:1.72;font-size:.9375rem;">
+          Home training rooms, sports halls, multi-purpose courts. No boundary tape, no manual configuration — Vali self-maps the space and starts immediately.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════
+     PROBLEM
+═══════════════════════════════════════════ -->
+<section id="problem" class="section" style="background:var(--bg);" aria-labelledby="problem-h2">
+  <div class="wrap">
+    <div style="margin-bottom:3.5rem;">
+      <div class="tag reveal">The Problem</div>
+      <h2 id="problem-h2" class="section-title reveal r1" style="max-width:580px;">
+        Multi-Ball Training Ends With<br>You on the Floor
+      </h2>
+      <p class="lead reveal r2" style="max-width:520px;margin-top:.875rem;">
+        Every table tennis player who has done multi-ball knows exactly how it ends: basket empties, drill stops, fifteen minutes of crawling around the room. Every single time.
+      </p>
+    </div>
+
+    <div class="problem-grid">
+      <div class="pain-list">
+        <div class="pain-row reveal r1">
+          <div class="pain-ic">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="10" cy="10" r="8.5" stroke="#FF6A1A" stroke-width="1.5"/>
+              <path d="M10 4.5V10.5L13.5 13" stroke="#FF6A1A" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h3>15+ Minutes of Pickup Per Basket</h3>
+            <p>A basket of 100 balls empties in 5–8 minutes. Collecting them all — under the table, in corners, rolled against the wall — eats 15–20 minutes of pure coaching time. Every. Single. Basket.</p>
+          </div>
+        </div>
+
+        <div class="pain-row reveal r2">
+          <div class="pain-ic">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M10 2V10M6 6C4 7.5 3 9.5 3 12C3 15.9 6.1 19 10 19C13.9 19 17 15.9 17 12C17 9.5 16 7.5 14 6" stroke="#FF6A1A" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <h3>200+ Times You Bend Down Each Session</h3>
+            <p>Coaching is physically demanding on its own. Add 200 bends under table frames, along baseboards, and into corners — coaches and players wear out fast before training even finishes.</p>
+          </div>
+        </div>
+
+        <div class="pain-row reveal r3">
+          <div class="pain-ic">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M3.5 10L7 7L10 11.5L13.5 7L17 10" stroke="#FF6A1A" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="15" y1="13.5" x2="18.5" y2="13.5" stroke="#FF6A1A" stroke-width="1.5" stroke-linecap="round" opacity=".35"/>
+              <line x1="16.5" y1="16" x2="18.5" y2="16" stroke="#FF6A1A" stroke-width="1.5" stroke-linecap="round" opacity=".2"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Drill Flow Collapses Every Basket</h3>
+            <p>Student is in the zone, footwork clicking, sequences building — and the basket runs dry. Stop. Collect. The rhythm is gone. That mental state doesn't come back quickly.</p>
+          </div>
+        </div>
+
+        <div class="pain-row reveal r4">
+          <div class="pain-ic">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <rect x="2" y="6.5" width="16" height="11.5" rx="2.25" stroke="#FF6A1A" stroke-width="1.5"/>
+              <path d="M6.5 6.5V5C6.5 3.07 8.07 1.5 10 1.5C11.93 1.5 13.5 3.07 13.5 5V6.5" stroke="#FF6A1A" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="10" cy="12" r="1.75" fill="#FF6A1A"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Coaching Hours Burned on Janitorial Work</h3>
+            <p>Do the math: 4 sessions a day × 15-minute pickups = 1 hour of a qualified coach's time spent on the floor collecting balls. Every single day. Over 300 hours a year.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-stack reveal r2" aria-label="Problem statistics">
+        <div class="stat-block">
+          <div class="stat-big" style="font-size:5.25rem;">200+</div>
+          <div class="stat-desc">times you bend down per session to pick up balls</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-big" style="font-size:4.25rem;">~60h</div>
+          <div class="stat-desc">coaching hours lost to ball pickup every year</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-big" style="font-size:4.25rem;">0</div>
+          <div class="stat-desc">times Vali complains about any of it</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════
+     SOLUTION
+═══════════════════════════════════════════ -->
+<section id="solution" class="section" style="background:var(--surface);" aria-labelledby="solution-h2">
+  <div class="wrap">
+    <div style="text-align:center;margin-bottom:3.5rem;">
+      <div class="tag reveal" style="justify-content:center;">Meet Vali</div>
+      <h2 id="solution-h2" class="section-title reveal r1">
+        Built for Multi-Ball.<br>Trained Like a Player.
+      </h2>
+      <p class="lead reveal r2" style="max-width:500px;margin:.875rem auto 0;">
+        Vali doesn't follow a fixed grid. It reads the floor the way a player reads the table — and drives straight to where the balls are.
+      </p>
+    </div>
+
+    <div class="feat-grid-main">
+      <div class="feat-card reveal r1">
+        <div class="feat-num">AI</div>
+        <h3>Trained on Real TT Footage</h3>
+        <p>Computer vision built on actual multi-ball training data. Vali detects every 40mm ball — orange or white, under the table, in corners, against walls — at 98%+ accuracy.</p>
+      </div>
+      <div class="feat-card reveal r2">
+        <div class="feat-num">100</div>
+        <h3>Ball Hopper Capacity</h3>
+        <p>Holds a full basket-worth of collected balls in a single pass. Tip them straight back into your training basket and you're drilling again — no trips, no wasted time.</p>
+      </div>
+      <div class="feat-card reveal r3">
+        <div class="feat-num">15+</div>
+        <h3>Minutes Back Per Session</h3>
+        <p>Release Vali and keep coaching. It picks up independently while the drill runs at full intensity — no pauses, no broken sequences, no bending down.</p>
+      </div>
+    </div>
+
+    <div class="feat-grid-mini">
+      <div class="mini-card reveal r1">
+        <div class="mini-ic">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true">
+            <ellipse cx="7" cy="7" rx="5.75" ry="6.25" stroke="#FF6A1A" stroke-width="1.35"/>
+            <line x1="11.25" y1="12" x2="16.25" y2="17" stroke="#FF6A1A" stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h4>Pure Pickup — Nothing Else</h4>
+          <p>Vali only collects balls from the floor. No shooting, no feeding — just pickup.</p>
+        </div>
+      </div>
+      <div class="mini-card reveal r2">
+        <div class="mini-ic">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true">
+            <circle cx="8.5" cy="8.5" r="7" stroke="#FF6A1A" stroke-width="1.35"/>
+            <path d="M8.5 5V9L11 10.5" stroke="#FF6A1A" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <h4>90-Min Battery</h4>
+          <p>Outlasts any training session on a single charge.</p>
+        </div>
+      </div>
+      <div class="mini-card reveal r3">
+        <div class="mini-ic">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true">
+            <circle cx="8.5" cy="8.5" r="7" stroke="#FF6A1A" stroke-width="1.35"/>
+            <path d="M3 8.5C3 8.5 5.5 5.25 8.5 5.25C11.5 5.25 14 8.5 14 8.5C14 8.5 11.5 11.75 8.5 11.75C5.5 11.75 3 8.5 3 8.5Z" stroke="#FF6A1A" stroke-width="1.35" fill="none"/>
+            <circle cx="8.5" cy="8.5" r="2" fill="#FF6A1A"/>
+          </svg>
+        </div>
+        <div>
+          <h4>Player-Safe Navigation</h4>
+          <p>Detects players, chairs, and table legs. Safe in live training.</p>
+        </div>
+      </div>
+      <div class="mini-card reveal r4">
+        <div class="mini-ic">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true">
+            <path d="M1.5 13L5 5L8.5 11L12 7.5L15.5 13" stroke="#FF6A1A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <h4>Under 45 dB</h4>
+          <p>Runs without distracting players or breaking drill focus.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════
+     SHOP
+═══════════════════════════════════════════ -->
+<section id="shop" class="section" style="background:var(--bg);" aria-labelledby="shop-h2">
+  <div class="wrap">
+    <div style="text-align:center;margin-bottom:3.5rem;">
+      <div class="tag reveal" style="justify-content:center;">Shop Vali</div>
+      <h2 id="shop-h2" class="section-title reveal r1">Pick Your Setup. Start Coaching.</h2>
+      <p class="lead reveal r2" style="max-width:480px;margin:.875rem auto 0;">
+        Three configurations, one robot. From home training rooms to multi-table halls.
+      </p>
+    </div>
+
+    <div class="shop-grid">
+
+      <!-- VALI HOME -->
+      <div class="product-card reveal r1">
+        <div class="product-vis">
+          <svg width="180" height="135" viewBox="0 0 180 135" fill="none" aria-hidden="true">
+            <ellipse cx="90" cy="115" rx="65" ry="10" fill="rgba(255,106,26,0.05)"/>
+            <rect x="40" y="50" width="100" height="55" rx="18" fill="#0A1320" stroke="rgba(255,106,26,0.4)" stroke-width="1.5"/>
+            <rect x="55" y="58" width="70" height="15" rx="5" fill="#040404" stroke="rgba(255,106,26,0.3)" stroke-width="1"/>
+            <rect x="60" y="62" width="14" height="7" rx="2" fill="rgba(255,106,26,0.4)"/>
+            <rect x="78" y="62" width="14" height="7" rx="2" fill="rgba(255,106,26,0.6)"/>
+            <rect x="96" y="62" width="14" height="7" rx="2" fill="rgba(255,106,26,0.4)"/>
+            <ellipse cx="90" cy="90" rx="22" ry="13" fill="#040404" stroke="rgba(255,106,26,0.2)" stroke-width="1"/>
+            <circle cx="83" cy="88" r="4" fill="#FF6A1A" opacity=".8"/>
+            <circle cx="95" cy="91" r="4" fill="#FF6A1A" opacity=".6"/>
+            <ellipse cx="45" cy="85" rx="8" ry="13" fill="#101010" stroke="rgba(255,106,26,0.3)" stroke-width="1"/>
+            <ellipse cx="135" cy="85" rx="8" ry="13" fill="#101010" stroke="rgba(255,106,26,0.3)" stroke-width="1"/>
+          </svg>
+        </div>
+        <div class="product-body">
+          <div class="product-tier">Vali Home</div>
+          <div class="product-name">For Home Training</div>
+          <p class="product-desc">Perfect for solo practice rooms and small clubs with 1–2 tables.</p>
+          <ul class="product-features">
+            <li>100-ball hopper capacity</li>
+            <li>90-minute battery life</li>
+            <li>Self-mapping floor scan</li>
+            <li>1-year warranty</li>
+          </ul>
+          <div class="product-price-row">
+            <span class="product-price">$1,499</span>
+            <span class="product-currency">USD</span>
+          </div>
+          <button class="btn btn-outline btn-block" onclick="addToCart('home')">Add to Cart</button>
+        </div>
+      </div>
+
+      <!-- VALI PRO (FEATURED) -->
+      <div class="product-card featured reveal r2">
+        <div class="product-vis">
+          <div class="product-badge">Most Popular</div>
+          <svg width="180" height="135" viewBox="0 0 180 135" fill="none" aria-hidden="true">
+            <ellipse cx="90" cy="115" rx="70" ry="11" fill="rgba(255,106,26,0.08)"/>
+            <rect x="35" y="45" width="110" height="62" rx="20" fill="#0A1320" stroke="rgba(255,106,26,0.55)" stroke-width="1.75"/>
+            <rect x="52" y="54" width="76" height="17" rx="6" fill="#040404" stroke="rgba(255,106,26,0.4)" stroke-width="1"/>
+            <rect x="58" y="58" width="16" height="9" rx="2.5" fill="rgba(255,106,26,0.5)">
+              <animate attributeName="opacity" values=".4;1;.4" dur="1.7s" repeatCount="indefinite"/>
+            </rect>
+            <rect x="78" y="58" width="16" height="9" rx="2.5" fill="rgba(255,106,26,0.7)">
+              <animate attributeName="opacity" values="1;.3;1" dur="2.1s" repeatCount="indefinite"/>
+            </rect>
+            <rect x="98" y="58" width="16" height="9" rx="2.5" fill="rgba(255,106,26,0.5)">
+              <animate attributeName="opacity" values=".3;1;.3" dur="2.5s" repeatCount="indefinite"/>
+            </rect>
+            <ellipse cx="90" cy="92" rx="26" ry="14" fill="#040404" stroke="rgba(255,106,26,0.3)" stroke-width="1.25"/>
+            <circle cx="80" cy="89" r="4.5" fill="#FF6A1A" opacity=".9"/>
+            <circle cx="95" cy="93" r="4.5" fill="#FF6A1A" opacity=".7"/>
+            <circle cx="87" cy="97" r="3.5" fill="#FF6A1A" opacity=".5"/>
+            <ellipse cx="42" cy="84" rx="9" ry="15" fill="#101010" stroke="rgba(255,106,26,0.4)" stroke-width="1.25"/>
+            <ellipse cx="138" cy="84" rx="9" ry="15" fill="#101010" stroke="rgba(255,106,26,0.4)" stroke-width="1.25"/>
+          </svg>
+        </div>
+        <div class="product-body">
+          <div class="product-tier">Vali Pro</div>
+          <div class="product-name">For Coaches &amp; Clubs</div>
+          <p class="product-desc">The full coaching experience. Built for clubs running back-to-back sessions.</p>
+          <ul class="product-features">
+            <li>150-ball hopper capacity</li>
+            <li>120-minute battery life</li>
+            <li>Multi-table navigation</li>
+            <li>Coach app + drill analytics</li>
+            <li>2-year warranty</li>
+          </ul>
+          <div class="product-price-row">
+            <span class="product-price">$2,299</span>
+            <span class="product-currency">USD</span>
+            <span class="product-orig">$2,599</span>
+          </div>
+          <button class="btn btn-fill btn-block" onclick="addToCart('pro')">Add to Cart</button>
+        </div>
+      </div>
+
+      <!-- VALI ELITE -->
+      <div class="product-card reveal r3">
+        <div class="product-vis">
+          <svg width="180" height="135" viewBox="0 0 180 135" fill="none" aria-hidden="true">
+            <ellipse cx="90" cy="115" rx="75" ry="12" fill="rgba(255,106,26,0.06)"/>
+            <rect x="30" y="40" width="120" height="68" rx="22" fill="#0A1320" stroke="rgba(255,106,26,0.45)" stroke-width="1.75"/>
+            <rect x="50" y="50" width="80" height="19" rx="6.5" fill="#040404" stroke="rgba(255,106,26,0.35)" stroke-width="1"/>
+            <rect x="56" y="54" width="18" height="11" rx="3" fill="rgba(255,106,26,0.55)"/>
+            <rect x="78" y="54" width="18" height="11" rx="3" fill="rgba(255,106,26,0.7)"/>
+            <rect x="100" y="54" width="18" height="11" rx="3" fill="rgba(255,106,26,0.55)"/>
+            <ellipse cx="90" cy="92" rx="30" ry="15" fill="#040404" stroke="rgba(255,106,26,0.3)" stroke-width="1.25"/>
+            <circle cx="78" cy="89" r="5" fill="#FF6A1A" opacity=".9"/>
+            <circle cx="95" cy="93" r="5" fill="#FF6A1A" opacity=".75"/>
+            <circle cx="87" cy="98" r="4" fill="#FF6A1A" opacity=".55"/>
+            <circle cx="100" cy="86" r="3.5" fill="#FF6A1A" opacity=".45"/>
+            <ellipse cx="37" cy="83" rx="10" ry="16" fill="#101010" stroke="rgba(255,106,26,0.35)" stroke-width="1.25"/>
+            <ellipse cx="143" cy="83" rx="10" ry="16" fill="#101010" stroke="rgba(255,106,26,0.35)" stroke-width="1.25"/>
+          </svg>
+        </div>
+        <div class="product-body">
+          <div class="product-tier">Vali Elite</div>
+          <div class="product-name">For Pro Halls</div>
+          <p class="product-desc">For multi-court venues, training centers, and competition halls.</p>
+          <ul class="product-features">
+            <li>200-ball hopper capacity</li>
+            <li>180-minute battery life</li>
+            <li>Multi-robot coordination</li>
+            <li>Priority 24/7 support</li>
+            <li>3-year warranty</li>
+          </ul>
+          <div class="product-price-row">
+            <span class="product-price">$3,499</span>
+            <span class="product-currency">USD</span>
+          </div>
+          <button class="btn btn-outline btn-block" onclick="addToCart('elite')">Add to Cart</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════
+     CTA
+═══════════════════════════════════════════ -->
+<section id="cta" class="section-cta" style="background:var(--bg-mid);position:relative;overflow:hidden;" aria-labelledby="cta-h2">
+
+  <div class="cta-glow" aria-hidden="true">
+    <div class="cta-glow-orb"></div>
+  </div>
+
+  <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+    <circle cx="7%" cy="28%" r="11" fill="#FF6A1A" opacity=".055"><animate attributeName="cy" values="28%;24%;28%" dur="3.2s" repeatCount="indefinite"/></circle>
+    <circle cx="93%" cy="58%" r="15" fill="#FF6A1A" opacity=".045"><animate attributeName="cy" values="58%;53%;58%" dur="3.9s" repeatCount="indefinite"/></circle>
+    <circle cx="14%" cy="74%" r="9" fill="#FF6A1A" opacity=".06"><animate attributeName="cy" values="74%;69%;74%" dur="2.7s" repeatCount="indefinite"/></circle>
+    <circle cx="88%" cy="22%" r="13" fill="#FF6A1A" opacity=".045"><animate attributeName="cy" values="22%;17%;22%" dur="4.1s" repeatCount="indefinite"/></circle>
+  </svg>
+
+  <div class="wrap" style="position:relative;">
+    <div style="max-width:660px;margin:0 auto;text-align:center;">
+      <div class="tag reveal" style="justify-content:center;">Get Started</div>
+
+      <h2 id="cta-h2" class="display reveal r1" style="margin-bottom:1.5rem;">
+        One Robot.<br>
+        <span class="accent">Zero Ball Problems.</span>
+      </h2>
+
+      <p class="lead reveal r2" style="max-width:470px;margin:0 auto 3rem;">
+        Create your account, pick your Vali, and start coaching without picking up another ball.
+      </p>
+
+      <div class="reveal r3" style="display:flex;gap:.875rem;justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-fill btn-lg" onclick="openAuth('signup')">
+          Create Account
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+            <path d="M3 7.5H12M8.5 3.5L12 7.5L8.5 11.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <a href="#shop" class="btn btn-ghost btn-lg">Browse Shop</a>
+      </div>
+
+      <p class="reveal r4" style="color:var(--dim);font-size:.8125rem;margin-top:1.375rem;">
+        Already have an account? <a href="#" onclick="event.preventDefault();openAuth('login')" style="color:var(--orange);text-decoration:none;">Sign in</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+
+<!-- ═══════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════ -->
+<footer style="background:#02080F;border-top:1px solid rgba(255,255,255,0.05);padding:2.5rem 0;">
+  <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+    <a href="#hero" class="logo" aria-label="Vali — back to top">
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <circle cx="16" cy="16" r="14.5" fill="rgba(255,106,26,0.1)" stroke="#FF6A1A" stroke-width="1.5"/>
+        <path d="M3 11.5 Q16 5.5 29 11.5" stroke="#FF6A1A" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <path d="M3 20.5 Q16 26.5 29 20.5" stroke="#FF6A1A" stroke-width="1.1" stroke-linecap="round" fill="none" opacity="0.5"/>
+        <circle cx="16" cy="16" r="3" fill="#FF6A1A"/>
+      </svg>
+      <span class="logo-text">Val<em>i</em></span>
+    </a>
+
+    <nav aria-label="Footer links" style="display:flex;gap:2rem;flex-wrap:wrap;">
+      <a href="#how-it-works" style="font-size:.875rem;color:var(--dim);text-decoration:none;">How it works</a>
+      <a href="#problem" style="font-size:.875rem;color:var(--dim);text-decoration:none;">The problem</a>
+      <a href="#solution" style="font-size:.875rem;color:var(--dim);text-decoration:none;">Features</a>
+      <a href="#shop" style="font-size:.875rem;color:var(--dim);text-decoration:none;">Shop</a>
+    </nav>
+
+    <p style="color:var(--dim);font-size:.8125rem;">© 2026 Vali. All rights reserved.</p>
+  </div>
+</footer>
+
+
+<!-- ═══════════════════════════════════════════
+     AUTH MODAL
+═══════════════════════════════════════════ -->
+<div class="modal-backdrop" id="auth-modal" onclick="if(event.target===this)closeAuth()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <div class="modal-head">
+      <button class="modal-close" onclick="closeAuth()" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <h2 id="auth-title" class="modal-title">Welcome to Vali</h2>
+      <p class="modal-sub" id="auth-sub">Sign in to your account or create a new one</p>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- TABS: Sign In / Sign Up -->
+      <div class="tabs" role="tablist">
+        <button class="tab active" role="tab" id="tab-login" onclick="switchAuthTab('login')">Sign In</button>
+        <button class="tab" role="tab" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
+      </div>
+
+      <!-- SOCIAL AUTH -->
+      <div class="social-row">
+        <button class="social-btn" type="button" onclick="socialSignIn('Google')">
+          <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M17.6 9.2c0-.6-.1-1.2-.2-1.8H9v3.4h4.8c-.2 1.1-.8 2-1.8 2.6v2.2h2.9c1.7-1.6 2.7-3.9 2.7-6.4z" fill="#4285F4"/>
+            <path d="M9 18c2.4 0 4.5-.8 6-2.2l-2.9-2.2c-.8.5-1.8.9-3.1.9-2.4 0-4.4-1.6-5.1-3.8H.9v2.3C2.4 16 5.5 18 9 18z" fill="#34A853"/>
+            <path d="M3.9 10.7c-.2-.5-.3-1.1-.3-1.7s.1-1.2.3-1.7V4.9H.9C.3 6.1 0 7.5 0 9s.3 2.9.9 4.1l3-2.4z" fill="#FBBC05"/>
+            <path d="M9 3.6c1.3 0 2.5.5 3.4 1.3l2.6-2.6C13.5.9 11.4 0 9 0 5.5 0 2.4 2 .9 4.9l3 2.3C4.6 5 6.6 3.6 9 3.6z" fill="#EA4335"/>
+          </svg>
+          Google
+        </button>
+        <button class="social-btn" type="button" onclick="socialSignIn('Apple')">
+          <svg width="16" height="16" viewBox="0 0 18 18" fill="currentColor" aria-hidden="true">
+            <path d="M13.4 9.6c0-2.4 2-3.5 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9s-1.9-.9-3.2-.8c-1.6 0-3.2 1-4 2.4-1.7 3-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3.1 2.4 1.2-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.6-.8.9-1.7 1.3-2.6-2.5-1-2.7-3.9-2.7-4.1zM11 2.5c.7-.8 1.1-2 1-3.1-1 .1-2.1.7-2.8 1.4-.6.7-1.2 1.9-1 3 1.1.1 2.2-.5 2.8-1.3z"/>
+          </svg>
+          Apple
+        </button>
+      </div>
+
+      <div class="divider">or</div>
+
+      <!-- LOGIN FORM -->
+      <form id="login-form" novalidate onsubmit="handleLogin(event)">
+
+        <!-- Login method selector -->
+        <div class="tabs" style="margin-bottom:1rem;">
+          <button class="tab active" type="button" id="login-mode-email" onclick="switchLoginMode('email')">Email</button>
+          <button class="tab" type="button" id="login-mode-phone" onclick="switchLoginMode('phone')">Phone</button>
+        </div>
+
+        <div class="form-group" id="login-email-group">
+          <label class="form-label" for="login-email">Email address</label>
+          <input
+            type="email"
+            id="login-email"
+            class="form-input"
+            placeholder="you@example.com"
+            autocomplete="email"
+          />
+          <p class="form-error" id="login-email-err">Please enter a valid email address.</p>
+        </div>
+
+        <div class="form-group" id="login-phone-group" style="display:none;">
+          <label class="form-label" for="login-phone">Phone number</label>
+          <input
+            type="tel"
+            id="login-phone"
+            class="form-input"
+            placeholder="+1 555 123 4567"
+            autocomplete="tel"
+          />
+          <p class="form-error" id="login-phone-err">Please enter a valid phone number (8–15 digits).</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="login-password">Password</label>
+          <input
+            type="password"
+            id="login-password"
+            class="form-input"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+          />
+          <p class="form-error" id="login-password-err">Password is required.</p>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;margin-bottom:1.25rem;">
+          <a href="#" onclick="event.preventDefault();alert('A password reset link would be sent to your email.');" style="color:var(--orange);font-size:.8125rem;text-decoration:none;font-family:'Space Grotesk',sans-serif;font-weight:600;">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn btn-fill btn-block">Sign In</button>
+      </form>
+
+      <!-- SIGNUP FORM -->
+      <form id="signup-form" novalidate style="display:none;" onsubmit="handleSignup(event)">
+
+        <div class="form-group">
+          <label class="form-label" for="signup-name">Full name</label>
+          <input
+            type="text"
+            id="signup-name"
+            class="form-input"
+            placeholder="Your name"
+            autocomplete="name"
+          />
+          <p class="form-error" id="signup-name-err">Please enter your name.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="signup-email">Email address</label>
+          <input
+            type="email"
+            id="signup-email"
+            class="form-input"
+            placeholder="you@example.com"
+            autocomplete="email"
+          />
+          <p class="form-error" id="signup-email-err">Please enter a valid email address (e.g., name@example.com).</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="signup-phone">Phone number <span style="color:var(--dim);font-weight:400;">(optional)</span></label>
+          <input
+            type="tel"
+            id="signup-phone"
+            class="form-input"
+            placeholder="+1 555 123 4567"
+            autocomplete="tel"
+          />
+          <p class="form-error" id="signup-phone-err">Phone must be 8–15 digits.</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="signup-password">Password</label>
+          <input
+            type="password"
+            id="signup-password"
+            class="form-input"
+            placeholder="Create a password"
+            autocomplete="new-password"
+            oninput="checkPwReqs()"
+          />
+
+          <div class="pw-reqs" aria-live="polite">
+            <div class="pw-req" id="pw-req-len"><span class="pw-check"></span> At least 6 characters</div>
+            <div class="pw-req" id="pw-req-space"><span class="pw-check"></span> No spaces</div>
+            <div class="pw-req" id="pw-req-letter"><span class="pw-check"></span> Contains a letter</div>
+            <div class="pw-req" id="pw-req-number"><span class="pw-check"></span> Contains a number</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="signup-password2">Confirm password</label>
+          <input
+            type="password"
+            id="signup-password2"
+            class="form-input"
+            placeholder="Re-enter password"
+            autocomplete="new-password"
+          />
+          <p class="form-error" id="signup-password2-err">Passwords don't match.</p>
+        </div>
+
+        <button type="submit" class="btn btn-fill btn-block">Create Account</button>
+
+        <p style="font-size:.7rem;color:var(--dim);margin-top:1rem;text-align:center;line-height:1.6;">
+          By creating an account, you agree to Vali's Terms of Service and Privacy Policy.
+        </p>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     ACCOUNT MODAL
+═══════════════════════════════════════════ -->
+<div class="modal-backdrop" id="account-modal" onclick="if(event.target===this)closeAccount()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="account-title">
+    <div class="modal-head">
+      <button class="modal-close" onclick="closeAccount()" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <h2 id="account-title" class="modal-title">Your Account</h2>
+      <p class="modal-sub" id="account-sub">Welcome back</p>
+    </div>
+
+    <div class="modal-body">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem;">
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <div class="user-avatar" id="account-avatar" style="width:48px;height:48px;font-size:1.05rem;">U</div>
+          <div>
+            <div id="account-name" style="font-weight:700;font-size:1.05rem;">User Name</div>
+            <div id="account-email" style="color:var(--muted);font-size:.85rem;">user@example.com</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:1.25rem;">
+        <h3 style="font-size:.85rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-weight:700;margin-bottom:.75rem;">Account Details</h3>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.5rem 0;">
+          <div style="padding:.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:.875rem;">
+            <span style="color:var(--muted);">Email</span>
+            <span id="account-email-2">—</span>
+          </div>
+          <div style="padding:.75rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;font-size:.875rem;">
+            <span style="color:var(--muted);">Phone</span>
+            <span id="account-phone">—</span>
+          </div>
+          <div style="padding:.75rem 1.25rem;display:flex;justify-content:space-between;font-size:.875rem;">
+            <span style="color:var(--muted);">Member since</span>
+            <span id="account-since">—</span>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-outline btn-block" onclick="signOut()">Sign Out</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     CART DRAWER
+═══════════════════════════════════════════ -->
+<div class="drawer-backdrop" id="cart-backdrop" onclick="closeCart()"></div>
+<aside class="drawer" id="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+
+  <div class="drawer-head">
+    <h2 id="cart-title" class="drawer-title">Your Cart</h2>
+    <button class="modal-close" onclick="closeCart()" aria-label="Close cart">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="drawer-body" id="cart-body">
+    <!-- populated by JS -->
+  </div>
+
+  <div class="drawer-foot" id="cart-foot" style="display:none;">
+    <div class="cart-totals">
+      <div class="cart-totals-row"><span>Subtotal</span><span id="cart-subtotal">$0</span></div>
+      <div class="cart-totals-row"><span>Shipping</span><span id="cart-shipping">Calculated at checkout</span></div>
+      <div class="cart-totals-row total"><span>Total</span><span id="cart-total">$0</span></div>
+    </div>
+    <button class="btn btn-fill btn-block" style="margin-top:1.25rem;" onclick="openCheckout()">
+      Checkout
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+        <path d="M3 7.5H12M8.5 3.5L12 7.5L8.5 11.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+</aside>
+
+
+<!-- ═══════════════════════════════════════════
+     CHECKOUT MODAL
+═══════════════════════════════════════════ -->
+<div class="modal-backdrop" id="checkout-modal" onclick="if(event.target===this)closeCheckout()">
+  <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+
+    <div class="modal-head">
+      <button class="modal-close" onclick="closeCheckout()" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <h2 id="checkout-title" class="modal-title">Checkout</h2>
+      <p class="modal-sub">Complete your order securely</p>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Checkout content (form or success) -->
+      <div id="checkout-content">
+        <div class="checkout-grid">
+          <form id="checkout-form" novalidate onsubmit="handleCheckout(event)">
+
+            <!-- 1. CONTACT -->
+            <div class="checkout-section">
+              <h3 class="checkout-section-title">
+                <span class="checkout-section-num">1</span>
+                Contact Information
+              </h3>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="co-name">Full name</label>
+                  <input type="text" id="co-name" class="form-input" placeholder="John Doe" autocomplete="name"/>
+                  <p class="form-error" id="co-name-err">Please enter your full name.</p>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="co-email">Email</label>
+                  <input type="email" id="co-email" class="form-input" placeholder="you@example.com" autocomplete="email"/>
+                  <p class="form-error" id="co-email-err">Please enter a valid email.</p>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="co-phone">Phone</label>
+                <input type="tel" id="co-phone" class="form-input" placeholder="+1 555 123 4567" autocomplete="tel"/>
+                <p class="form-error" id="co-phone-err">Please enter a valid phone (8–15 digits).</p>
+              </div>
+            </div>
+
+            <!-- 2. SHIPPING -->
+            <div class="checkout-section">
+              <h3 class="checkout-section-title">
+                <span class="checkout-section-num">2</span>
+                Shipping Address
+              </h3>
+              <div class="form-group">
+                <label class="form-label" for="co-address">Street address</label>
+                <input type="text" id="co-address" class="form-input" placeholder="123 Main Street" autocomplete="street-address"/>
+                <p class="form-error" id="co-address-err">Please enter your street address.</p>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="co-address2">Apartment, suite, etc. <span style="color:var(--dim);font-weight:400;">(optional)</span></label>
+                <input type="text" id="co-address2" class="form-input" placeholder="Apt 4B" autocomplete="address-line2"/>
+              </div>
+              <div class="form-row-3">
+                <div class="form-group">
+                  <label class="form-label" for="co-city">City</label>
+                  <input type="text" id="co-city" class="form-input" placeholder="Doha" autocomplete="address-level2"/>
+                  <p class="form-error" id="co-city-err">Please enter your city.</p>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="co-state">State / Region</label>
+                  <input type="text" id="co-state" class="form-input" placeholder="State" autocomplete="address-level1"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="co-zip">Postal code</label>
+                  <input type="text" id="co-zip" class="form-input" placeholder="12345" autocomplete="postal-code"/>
+                  <p class="form-error" id="co-zip-err">Please enter your postal code.</p>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="co-country">Country</label>
+                <select id="co-country" class="form-select" autocomplete="country">
+                  <option value="">Select a country</option>
+                  <option value="QA">Qatar</option>
+                  <option value="AE">United Arab Emirates</option>
+                  <option value="SA">Saudi Arabia</option>
+                  <option value="KW">Kuwait</option>
+                  <option value="BH">Bahrain</option>
+                  <option value="OM">Oman</option>
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="DE">Germany</option>
+                  <option value="FR">France</option>
+                  <option value="ES">Spain</option>
+                  <option value="IT">Italy</option>
+                  <option value="NL">Netherlands</option>
+                  <option value="SE">Sweden</option>
+                  <option value="JP">Japan</option>
+                  <option value="KR">South Korea</option>
+                  <option value="CN">China</option>
+                  <option value="IN">India</option>
+                  <option value="AU">Australia</option>
+                  <option value="BR">Brazil</option>
+                  <option value="MX">Mexico</option>
+                  <option value="ZA">South Africa</option>
+                  <option value="EG">Egypt</option>
+                  <option value="TR">Turkey</option>
+                </select>
+                <p class="form-error" id="co-country-err">Please choose your country.</p>
+              </div>
+            </div>
+
+            <!-- 3. PAYMENT -->
+            <div class="checkout-section">
+              <h3 class="checkout-section-title">
+                <span class="checkout-section-num">3</span>
+                Payment Method
+              </h3>
+
+              <div class="pay-options">
+                <label class="pay-opt">
+                  <input type="radio" name="payment" value="card" checked onchange="switchPayment('card')"/>
+                  <div class="pay-opt-box">
+                    <svg width="22" height="16" viewBox="0 0 22 16" fill="none">
+                      <rect x=".75" y=".75" width="20.5" height="14.5" rx="2.25" stroke="currentColor" stroke-width="1.25"/>
+                      <line x1="1" y1="5" x2="21" y2="5" stroke="currentColor" stroke-width="1.25"/>
+                    </svg>
+                    <span>Card</span>
+                  </div>
+                </label>
+                <label class="pay-opt">
+                  <input type="radio" name="payment" value="paypal" onchange="switchPayment('paypal')"/>
+                  <div class="pay-opt-box">
+                    <svg width="22" height="16" viewBox="0 0 22 16" fill="none">
+                      <path d="M5 13L7 3H13C15.5 3 16.5 4.5 16 7C15.5 9.5 13.5 10.5 11 10.5H9L8.5 13H5Z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+                    </svg>
+                    <span>PayPal</span>
+                  </div>
+                </label>
+                <label class="pay-opt">
+                  <input type="radio" name="payment" value="bank" onchange="switchPayment('bank')"/>
+                  <div class="pay-opt-box">
+                    <svg width="22" height="16" viewBox="0 0 22 16" fill="none">
+                      <path d="M2 6L11 1.5L20 6" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+                      <line x1="2" y1="14" x2="20" y2="14" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+                      <line x1="5" y1="6" x2="5" y2="14" stroke="currentColor" stroke-width="1.25"/>
+                      <line x1="11" y1="6" x2="11" y2="14" stroke="currentColor" stroke-width="1.25"/>
+                      <line x1="17" y1="6" x2="17" y2="14" stroke="currentColor" stroke-width="1.25"/>
+                    </svg>
+                    <span>Bank Transfer</span>
+                  </div>
+                </label>
+              </div>
+
+              <!-- CARD FIELDS -->
+              <div id="pay-card-fields">
+                <div class="form-group">
+                  <label class="form-label" for="co-card">Card number</label>
+                  <input type="text" id="co-card" class="form-input" placeholder="1234 5678 9012 3456" inputmode="numeric" autocomplete="cc-number" maxlength="19" oninput="formatCard(this)"/>
+                  <p class="form-error" id="co-card-err">Please enter a valid 16-digit card number.</p>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label" for="co-exp">Expiry (MM/YY)</label>
+                    <input type="text" id="co-exp" class="form-input" placeholder="MM/YY" inputmode="numeric" autocomplete="cc-exp" maxlength="5" oninput="formatExp(this)"/>
+                    <p class="form-error" id="co-exp-err">Use MM/YY format.</p>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="co-cvv">CVV</label>
+                    <input type="text" id="co-cvv" class="form-input" placeholder="123" inputmode="numeric" autocomplete="cc-csc" maxlength="4"/>
+                    <p class="form-error" id="co-cvv-err">CVV must be 3–4 digits.</p>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="co-card-name">Name on card</label>
+                  <input type="text" id="co-card-name" class="form-input" placeholder="JOHN DOE" autocomplete="cc-name"/>
+                  <p class="form-error" id="co-card-name-err">Please enter the name on your card.</p>
+                </div>
+              </div>
+
+              <!-- PAYPAL INFO -->
+              <div id="pay-paypal-fields" style="display:none;padding:1rem;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;font-size:.875rem;color:var(--muted);">
+                You'll be redirected to PayPal to complete your payment securely after placing the order.
+              </div>
+
+              <!-- BANK INFO -->
+              <div id="pay-bank-fields" style="display:none;padding:1rem;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;font-size:.875rem;color:var(--muted);">
+                Bank transfer details will be emailed to you. Your order ships once the transfer clears (typically 1–3 business days).
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-fill btn-block" id="checkout-submit">
+              Place Order
+            </button>
+          </form>
+
+          <!-- ORDER SUMMARY -->
+          <div class="checkout-summary">
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Order Summary</h3>
+            <div id="checkout-items"></div>
+            <div class="cart-totals" style="margin-top:1rem;">
+              <div class="cart-totals-row"><span>Subtotal</span><span id="co-subtotal">$0</span></div>
+              <div class="cart-totals-row"><span>Shipping</span><span id="co-shipping">$49</span></div>
+              <div class="cart-totals-row"><span>Tax (estimated)</span><span id="co-tax">$0</span></div>
+              <div class="cart-totals-row total"><span>Total</span><span id="co-total">$0</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUCCESS STATE -->
+      <div id="checkout-success" class="success-state" style="display:none;">
+        <div class="success-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M6 14L12 20L22 8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:.5rem;">Order Placed!</h2>
+        <p style="color:var(--muted);max-width:380px;margin:0 auto 1.5rem;line-height:1.65;">
+          Thanks for your order. We've sent a confirmation to <strong id="success-email" style="color:var(--white);">your email</strong>. Your Vali will ship within 5–7 business days.
+        </p>
+        <p style="color:var(--dim);font-size:.85rem;margin-bottom:2rem;">
+          Order ID: <span id="success-order-id" style="color:var(--orange);font-family:'Space Grotesk',sans-serif;font-weight:700;">VAL-0000</span>
+        </p>
+        <button class="btn btn-fill" onclick="closeCheckout();">Continue Shopping</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="toast-ic">✓</div>
+  <span id="toast-msg">Added to cart</span>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════
+const PRODUCTS = {
+  home:  { id: 'home',  name: 'Vali Home',  tier: 'For Home Training',  price: 1499 },
+  pro:   { id: 'pro',   name: 'Vali Pro',   tier: 'For Coaches & Clubs', price: 2299 },
+  elite: { id: 'elite', name: 'Vali Elite', tier: 'For Pro Halls',       price: 3499 }
+};
+
+// In-memory state (account info persisted to localStorage for demo convenience)
+let cart = [];   // [{ id, qty }]
+let currentUser = null;
+
+// ═══════════════════════════════════════════
+// PERSISTENCE HELPERS
+// ═══════════════════════════════════════════
+function saveUser() {
+  try { localStorage.setItem('vali_user', JSON.stringify(currentUser)); } catch (e) {}
+}
+function loadUser() {
+  try {
+    const raw = localStorage.getItem('vali_user');
+    if (raw) currentUser = JSON.parse(raw);
+  } catch (e) {}
+}
+function clearUser() {
+  try { localStorage.removeItem('vali_user'); } catch (e) {}
+  currentUser = null;
+}
+function loadUsersList() {
+  try { return JSON.parse(localStorage.getItem('vali_users_list') || '{}'); } catch (e) { return {}; }
+}
+function saveUsersList(list) {
+  try { localStorage.setItem('vali_users_list', JSON.stringify(list)); } catch (e) {}
+}
+
+// ═══════════════════════════════════════════
+// NAV / SCROLL
+// ═══════════════════════════════════════════
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('stuck', window.scrollY > 55);
+}, { passive: true });
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); });
+}, { threshold: 0.1, rootMargin: '0px 0px -36px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Counter animation
+function countUp(el, target, duration) {
+  let start = null;
+  function step(ts) {
+    if (!start) start = ts;
+    const progress = Math.min((ts - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(eased * target);
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+const counterEl = document.getElementById('hero-counter');
+new IntersectionObserver(([entry], obs) => {
+  if (entry.isIntersecting) { countUp(counterEl, 15, 1400); obs.disconnect(); }
+}, { threshold: 0.5 }).observe(counterEl);
+
+// Smooth anchor scroll
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
+  });
+});
+
+// ═══════════════════════════════════════════
+// VALIDATION HELPERS
+// ═══════════════════════════════════════════
+function isValidEmail(email) {
+  if (typeof email !== 'string') return false;
+  email = email.trim();
+  // Standard, strict-ish email regex: local@domain.tld, no spaces, must have .tld
+  const re = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+  return re.test(email) && email.length <= 254;
+}
+function isValidPhone(phone) {
+  if (typeof phone !== 'string') return false;
+  // Allow +, spaces, dashes, parens — but require 8–15 digits total
+  const digits = phone.replace(/[^0-9]/g, '');
+  return digits.length >= 8 && digits.length <= 15;
+}
+function isValidPassword(pw) {
+  // Min 6 chars, no spaces
+  return typeof pw === 'string' && pw.length >= 6 && !/\s/.test(pw);
+}
+function isStrongPassword(pw) {
+  // Stricter: 6+ chars, no spaces, at least 1 letter, at least 1 number
+  return isValidPassword(pw) && /[A-Za-z]/.test(pw) && /[0-9]/.test(pw);
+}
+
+function showErr(inputId, errId, show) {
+  const input = document.getElementById(inputId);
+  const err = document.getElementById(errId);
+  if (input) {
+    if (show) { input.classList.add('invalid'); input.classList.remove('valid'); }
+    else { input.classList.remove('invalid'); input.classList.add('valid'); }
+  }
+  if (err) err.classList.toggle('show', show);
+}
+function clearErr(inputId, errId) {
+  const input = document.getElementById(inputId);
+  const err = document.getElementById(errId);
+  if (input) input.classList.remove('invalid', 'valid');
+  if (err) err.classList.remove('show');
+}
+
+// ═══════════════════════════════════════════
+// AUTH MODAL
+// ═══════════════════════════════════════════
+let authMode = 'login'; // 'login' or 'signup'
+let loginMode = 'email'; // 'email' or 'phone'
+
+function openAuth(mode) {
+  authMode = mode || 'login';
+  document.getElementById('auth-modal').classList.add('open');
+  document.body.classList.add('locked');
+  switchAuthTab(authMode);
+}
+function closeAuth() {
+  document.getElementById('auth-modal').classList.remove('open');
+  document.body.classList.remove('locked');
+}
+function switchAuthTab(mode) {
+  authMode = mode;
+  document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+  document.getElementById('tab-signup').classList.toggle('active', mode === 'signup');
+  document.getElementById('login-form').style.display  = mode === 'login'  ? 'block' : 'none';
+  document.getElementById('signup-form').style.display = mode === 'signup' ? 'block' : 'none';
+  document.getElementById('auth-sub').textContent =
+    mode === 'login' ? 'Sign in to your account' : 'Create a new account';
+}
+function switchLoginMode(mode) {
+  loginMode = mode;
+  document.getElementById('login-mode-email').classList.toggle('active', mode === 'email');
+  document.getElementById('login-mode-phone').classList.toggle('active', mode === 'phone');
+  document.getElementById('login-email-group').style.display = mode === 'email' ? 'block' : 'none';
+  document.getElementById('login-phone-group').style.display = mode === 'phone' ? 'block' : 'none';
+}
+
+// password req live check
+function checkPwReqs() {
+  const pw = document.getElementById('signup-password').value;
+  document.getElementById('pw-req-len').classList.toggle('ok', pw.length >= 6);
+  document.getElementById('pw-req-space').classList.toggle('ok', pw.length > 0 && !/\s/.test(pw));
+  document.getElementById('pw-req-letter').classList.toggle('ok', /[A-Za-z]/.test(pw));
+  document.getElementById('pw-req-number').classList.toggle('ok', /[0-9]/.test(pw));
+}
+
+// Login submission
+function handleLogin(e) {
+  e.preventDefault();
+  let ok = true;
+
+  if (loginMode === 'email') {
+    const email = document.getElementById('login-email').value.trim();
+    if (!isValidEmail(email)) { showErr('login-email', 'login-email-err', true); ok = false; }
+    else clearErr('login-email', 'login-email-err');
+  } else {
+    const phone = document.getElementById('login-phone').value.trim();
+    if (!isValidPhone(phone)) { showErr('login-phone', 'login-phone-err', true); ok = false; }
+    else clearErr('login-phone', 'login-phone-err');
+  }
+
+  const pw = document.getElementById('login-password').value;
+  if (!pw || pw.length < 1) {
+    showErr('login-password', 'login-password-err', true);
+    document.getElementById('login-password-err').textContent = 'Password is required.';
+    ok = false;
+  } else clearErr('login-password', 'login-password-err');
+
+  if (!ok) return;
+
+  // Demo: look up user from saved list
+  const users = loadUsersList();
+  let userKey = null;
+  if (loginMode === 'email') {
+    userKey = document.getElementById('login-email').value.trim().toLowerCase();
+  } else {
+    // Find user by phone digits
+    const phoneDigits = document.getElementById('login-phone').value.replace(/[^0-9]/g, '');
+    userKey = Object.keys(users).find(k => (users[k].phoneDigits || '') === phoneDigits);
+  }
+
+  if (!userKey || !users[userKey]) {
+    showErr(loginMode === 'email' ? 'login-email' : 'login-phone',
+            loginMode === 'email' ? 'login-email-err' : 'login-phone-err', true);
+    document.getElementById(loginMode === 'email' ? 'login-email-err' : 'login-phone-err').textContent =
+      'No account found with that ' + (loginMode === 'email' ? 'email' : 'phone number') + '.';
+    return;
+  }
+  if (users[userKey].password !== pw) {
+    showErr('login-password', 'login-password-err', true);
+    document.getElementById('login-password-err').textContent = 'Incorrect password.';
+    return;
+  }
+
+  // Sign in
+  currentUser = { ...users[userKey] };
+  delete currentUser.password; // don't keep password in session
+  saveUser();
+  refreshUserUI();
+  closeAuth();
+  showToast('Welcome back, ' + (currentUser.name || 'friend') + '!');
+}
+
+// Signup submission
+function handleSignup(e) {
+  e.preventDefault();
+  let ok = true;
+
+  const name = document.getElementById('signup-name').value.trim();
+  if (name.length < 2) { showErr('signup-name', 'signup-name-err', true); ok = false; }
+  else clearErr('signup-name', 'signup-name-err');
+
+  const email = document.getElementById('signup-email').value.trim();
+  if (!isValidEmail(email)) { showErr('signup-email', 'signup-email-err', true); ok = false; }
+  else clearErr('signup-email', 'signup-email-err');
+
+  const phoneRaw = document.getElementById('signup-phone').value.trim();
+  if (phoneRaw.length > 0 && !isValidPhone(phoneRaw)) {
+    showErr('signup-phone', 'signup-phone-err', true); ok = false;
+  } else clearErr('signup-phone', 'signup-phone-err');
+
+  const pw = document.getElementById('signup-password').value;
+  if (!isValidPassword(pw)) {
+    // We're not using the inline error for password since reqs are shown above
+    document.getElementById('signup-password').classList.add('invalid');
+    ok = false;
+  } else {
+    document.getElementById('signup-password').classList.remove('invalid');
+  }
+
+  const pw2 = document.getElementById('signup-password2').value;
+  if (pw !== pw2 || !pw2) {
+    showErr('signup-password2', 'signup-password2-err', true); ok = false;
+  } else clearErr('signup-password2', 'signup-password2-err');
+
+  if (!ok) return;
+
+  // Check if email already used
+  const users = loadUsersList();
+  const key = email.toLowerCase();
+  if (users[key]) {
+    showErr('signup-email', 'signup-email-err', true);
+    document.getElementById('signup-email-err').textContent = 'An account with this email already exists.';
+    return;
+  }
+
+  // Create user
+  const newUser = {
+    name,
+    email: key,
+    phone: phoneRaw || '',
+    phoneDigits: phoneRaw ? phoneRaw.replace(/[^0-9]/g, '') : '',
+    password: pw,                                // demo only — in production hash on server
+    createdAt: new Date().toISOString()
+  };
+  users[key] = newUser;
+  saveUsersList(users);
+
+  // Sign in
+  currentUser = { ...newUser };
+  delete currentUser.password;
+  saveUser();
+  refreshUserUI();
+  closeAuth();
+  showToast('Account created — welcome to Vali!');
+}
+
+function socialSignIn(provider) {
+  // In a real product this would redirect to OAuth. For this demo we create a quick local account.
+  const fakeEmail = provider.toLowerCase() + '_user@example.com';
+  const users = loadUsersList();
+  if (!users[fakeEmail]) {
+    users[fakeEmail] = {
+      name: provider + ' User',
+      email: fakeEmail,
+      phone: '',
+      phoneDigits: '',
+      password: '__social__' + Math.random(),
+      createdAt: new Date().toISOString()
+    };
+    saveUsersList(users);
+  }
+  currentUser = { ...users[fakeEmail] };
+  delete currentUser.password;
+  saveUser();
+  refreshUserUI();
+  closeAuth();
+  showToast('Signed in with ' + provider);
+}
+
+function signOut() {
+  clearUser();
+  refreshUserUI();
+  closeAccount();
+  showToast('Signed out');
+}
+
+// ═══════════════════════════════════════════
+// ACCOUNT MODAL
+// ═══════════════════════════════════════════
+function openAccount() {
+  if (!currentUser) return openAuth('login');
+  document.getElementById('account-name').textContent = currentUser.name || 'User';
+  document.getElementById('account-email').textContent = currentUser.email || '';
+  document.getElementById('account-email-2').textContent = currentUser.email || '—';
+  document.getElementById('account-phone').textContent = currentUser.phone || '—';
+  document.getElementById('account-since').textContent =
+    currentUser.createdAt ? new Date(currentUser.createdAt).toLocaleDateString() : '—';
+  document.getElementById('account-avatar').textContent = (currentUser.name || 'U')[0].toUpperCase();
+  document.getElementById('account-modal').classList.add('open');
+  document.body.classList.add('locked');
+}
+function closeAccount() {
+  document.getElementById('account-modal').classList.remove('open');
+  document.body.classList.remove('locked');
+}
+
+function refreshUserUI() {
+  const authBtn = document.getElementById('auth-btn');
+  const chip = document.getElementById('user-chip');
+  if (currentUser) {
+    authBtn.style.display = 'none';
+    chip.style.display = 'inline-flex';
+    document.getElementById('user-avatar').textContent = (currentUser.name || 'U')[0].toUpperCase();
+    document.getElementById('user-name-short').textContent = (currentUser.name || 'Account').split(' ')[0];
+  } else {
+    authBtn.style.display = 'inline-flex';
+    chip.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════
+// CART
+// ═══════════════════════════════════════════
+function addToCart(productId) {
+  const existing = cart.find(item => item.id === productId);
+  if (existing) existing.qty += 1;
+  else cart.push({ id: productId, qty: 1 });
+  updateCartUI();
+  showToast(PRODUCTS[productId].name + ' added to cart');
+}
+function removeFromCart(productId) {
+  cart = cart.filter(item => item.id !== productId);
+  updateCartUI();
+}
+function changeQty(productId, delta) {
+  const item = cart.find(i => i.id === productId);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty < 1) cart = cart.filter(i => i.id !== productId);
+  updateCartUI();
+}
+function cartSubtotal() {
+  return cart.reduce((sum, item) => sum + PRODUCTS[item.id].price * item.qty, 0);
+}
+function cartCount() {
+  return cart.reduce((sum, item) => sum + item.qty, 0);
+}
+
+function fmtMoney(n) {
+  return '$' + n.toLocaleString('en-US');
+}
+
+function updateCartUI() {
+  const badge = document.getElementById('cart-badge');
+  const count = cartCount();
+  if (count > 0) {
+    badge.textContent = count;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+
+  const body = document.getElementById('cart-body');
+  const foot = document.getElementById('cart-foot');
+
+  if (cart.length === 0) {
+    body.innerHTML = `
+      <div class="cart-empty">
+        <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+          <path d="M10 14H17L21.5 38H47L51.5 21H22" stroke="#FF6A1A" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="26" cy="48" r="3.5" stroke="#FF6A1A" stroke-width="1.75"/>
+          <circle cx="44" cy="48" r="3.5" stroke="#FF6A1A" stroke-width="1.75"/>
+        </svg>
+        <p style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--white);margin-bottom:.5rem;">Your cart is empty</p>
+        <p style="font-size:.875rem;">Browse our shop and add a Vali to get started.</p>
+      </div>`;
+    foot.style.display = 'none';
+    return;
+  }
+
+  body.innerHTML = cart.map(item => {
+    const p = PRODUCTS[item.id];
+    return `
+      <div class="cart-item">
+        <div class="cart-item-img">
+          <svg width="32" height="24" viewBox="0 0 32 24" fill="none">
+            <rect x="4" y="6" width="24" height="14" rx="5" fill="#040404" stroke="#FF6A1A" stroke-width="1.25"/>
+            <ellipse cx="16" cy="14" rx="6" ry="3.5" fill="#FF6A1A" opacity=".7"/>
+          </svg>
+        </div>
+        <div>
+          <div class="cart-item-name">${p.name}</div>
+          <div class="cart-item-tier">${p.tier}</div>
+          <div class="qty-row">
+            <button class="qty-btn" onclick="changeQty('${p.id}', -1)" aria-label="Decrease">−</button>
+            <span class="qty-num">${item.qty}</span>
+            <button class="qty-btn" onclick="changeQty('${p.id}', 1)" aria-label="Increase">+</button>
+            <button class="remove-btn" onclick="removeFromCart('${p.id}')">Remove</button>
+          </div>
+        </div>
+        <div class="cart-item-price">${fmtMoney(p.price * item.qty)}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('cart-subtotal').textContent = fmtMoney(cartSubtotal());
+  document.getElementById('cart-total').textContent = fmtMoney(cartSubtotal());
+  foot.style.display = 'block';
+}
+
+function openCart() {
+  updateCartUI();
+  document.getElementById('cart-drawer').classList.add('open');
+  document.getElementById('cart-backdrop').classList.add('open');
+  document.body.classList.add('locked');
+}
+function closeCart() {
+  document.getElementById('cart-drawer').classList.remove('open');
+  document.getElementById('cart-backdrop').classList.remove('open');
+  document.body.classList.remove('locked');
+}
+
+// ═══════════════════════════════════════════
+// CHECKOUT
+// ═══════════════════════════════════════════
+const SHIPPING = 49;
+const TAX_RATE = 0.05;
+
+function openCheckout() {
+  if (cart.length === 0) { showToast('Your cart is empty'); return; }
+  closeCart();
+
+  // Pre-fill if user is signed in
+  if (currentUser) {
+    if (currentUser.name)  document.getElementById('co-name').value  = currentUser.name;
+    if (currentUser.email) document.getElementById('co-email').value = currentUser.email;
+    if (currentUser.phone) document.getElementById('co-phone').value = currentUser.phone;
+  }
+
+  // Show form, hide success
+  document.getElementById('checkout-content').style.display = 'block';
+  document.getElementById('checkout-success').style.display = 'none';
+
+  // Populate summary
+  const itemsEl = document.getElementById('checkout-items');
+  itemsEl.innerHTML = cart.map(item => {
+    const p = PRODUCTS[item.id];
+    return `<div class="summary-item"><span>${p.name} × ${item.qty}</span><span>${fmtMoney(p.price * item.qty)}</span></div>`;
+  }).join('');
+
+  const sub = cartSubtotal();
+  const tax = Math.round(sub * TAX_RATE);
+  const total = sub + SHIPPING + tax;
+  document.getElementById('co-subtotal').textContent = fmtMoney(sub);
+  document.getElementById('co-shipping').textContent = fmtMoney(SHIPPING);
+  document.getElementById('co-tax').textContent      = fmtMoney(tax);
+  document.getElementById('co-total').textContent    = fmtMoney(total);
+
+  document.getElementById('checkout-modal').classList.add('open');
+  document.body.classList.add('locked');
+}
+function closeCheckout() {
+  document.getElementById('checkout-modal').classList.remove('open');
+  document.body.classList.remove('locked');
+}
+
+function switchPayment(method) {
+  document.getElementById('pay-card-fields').style.display   = method === 'card'   ? 'block' : 'none';
+  document.getElementById('pay-paypal-fields').style.display = method === 'paypal' ? 'block' : 'none';
+  document.getElementById('pay-bank-fields').style.display   = method === 'bank'   ? 'block' : 'none';
+}
+
+// Card formatters
+function formatCard(input) {
+  let val = input.value.replace(/[^0-9]/g, '').slice(0, 16);
+  const groups = val.match(/.{1,4}/g);
+  input.value = groups ? groups.join(' ') : '';
+}
+function formatExp(input) {
+  let val = input.value.replace(/[^0-9]/g, '').slice(0, 4);
+  if (val.length >= 3) val = val.slice(0, 2) + '/' + val.slice(2);
+  input.value = val;
+}
+
+function handleCheckout(e) {
+  e.preventDefault();
+  let ok = true;
+
+  // Contact
+  const name = document.getElementById('co-name').value.trim();
+  if (name.length < 2) { showErr('co-name', 'co-name-err', true); ok = false; }
+  else clearErr('co-name', 'co-name-err');
+
+  const email = document.getElementById('co-email').value.trim();
+  if (!isValidEmail(email)) { showErr('co-email', 'co-email-err', true); ok = false; }
+  else clearErr('co-email', 'co-email-err');
+
+  const phone = document.getElementById('co-phone').value.trim();
+  if (!isValidPhone(phone)) { showErr('co-phone', 'co-phone-err', true); ok = false; }
+  else clearErr('co-phone', 'co-phone-err');
+
+  // Address
+  const addr = document.getElementById('co-address').value.trim();
+  if (addr.length < 3) { showErr('co-address', 'co-address-err', true); ok = false; }
+  else clearErr('co-address', 'co-address-err');
+
+  const city = document.getElementById('co-city').value.trim();
+  if (city.length < 2) { showErr('co-city', 'co-city-err', true); ok = false; }
+  else clearErr('co-city', 'co-city-err');
+
+  const zip = document.getElementById('co-zip').value.trim();
+  if (zip.length < 3) { showErr('co-zip', 'co-zip-err', true); ok = false; }
+  else clearErr('co-zip', 'co-zip-err');
+
+  const country = document.getElementById('co-country').value;
+  if (!country) { showErr('co-country', 'co-country-err', true); ok = false; }
+  else clearErr('co-country', 'co-country-err');
+
+  // Payment
+  const method = document.querySelector('input[name="payment"]:checked').value;
+
+  if (method === 'card') {
+    const cardDigits = document.getElementById('co-card').value.replace(/\s/g, '');
+    if (cardDigits.length !== 16 || !/^[0-9]+$/.test(cardDigits)) {
+      showErr('co-card', 'co-card-err', true); ok = false;
+    } else clearErr('co-card', 'co-card-err');
+
+    const exp = document.getElementById('co-exp').value.trim();
+    const expMatch = exp.match(/^(\d{2})\/(\d{2})$/);
+    let expValid = false;
+    if (expMatch) {
+      const mm = parseInt(expMatch[1], 10);
+      const yy = parseInt(expMatch[2], 10);
+      const now = new Date();
+      const currYY = now.getFullYear() % 100;
+      const currMM = now.getMonth() + 1;
+      if (mm >= 1 && mm <= 12 && yy >= currYY && !(yy === currYY && mm < currMM)) {
+        expValid = true;
+      }
+    }
+    if (!expValid) {
+      showErr('co-exp', 'co-exp-err', true);
+      document.getElementById('co-exp-err').textContent = 'Use MM/YY format and a valid future date.';
+      ok = false;
+    } else clearErr('co-exp', 'co-exp-err');
+
+    const cvv = document.getElementById('co-cvv').value.trim();
+    if (!/^\d{3,4}$/.test(cvv)) { showErr('co-cvv', 'co-cvv-err', true); ok = false; }
+    else clearErr('co-cvv', 'co-cvv-err');
+
+    const cardName = document.getElementById('co-card-name').value.trim();
+    if (cardName.length < 2) { showErr('co-card-name', 'co-card-name-err', true); ok = false; }
+    else clearErr('co-card-name', 'co-card-name-err');
+  }
+
+  if (!ok) {
+    // Scroll first error into view
+    const firstErr = document.querySelector('.form-error.show');
+    if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  // Place "order"
+  const orderId = 'VAL-' + Math.floor(1000 + Math.random() * 9000);
+  document.getElementById('success-email').textContent = email;
+  document.getElementById('success-order-id').textContent = orderId;
+  document.getElementById('checkout-content').style.display = 'none';
+  document.getElementById('checkout-success').style.display = 'block';
+
+  // Clear cart
+  cart = [];
+  updateCartUI();
+}
+
+// ═══════════════════════════════════════════
+// ANIMATIONS — Scroll progress, particles, counters
+// ═══════════════════════════════════════════
+
+// 1. Scroll progress bar
+const scrollBar = document.getElementById('scroll-progress');
+function updateScrollProgress() {
+  const h = document.documentElement;
+  const scrolled = h.scrollTop;
+  const total = h.scrollHeight - h.clientHeight;
+  const pct = total > 0 ? (scrolled / total) * 100 : 0;
+  if (scrollBar) scrollBar.style.width = pct + '%';
+}
+window.addEventListener('scroll', updateScrollProgress, { passive: true });
+updateScrollProgress();
+
+// 2. Floating particles in hero
+(function spawnParticles() {
+  const container = document.getElementById('hero-particles');
+  if (!container) return;
+  const count = 18;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDelay = (Math.random() * 15) + 's';
+    p.style.animationDuration = (12 + Math.random() * 8) + 's';
+    p.style.width = p.style.height = (2 + Math.random() * 3) + 'px';
+    p.style.opacity = (0.2 + Math.random() * 0.3);
+    container.appendChild(p);
+  }
+})();
+
+// 3. Count-up animation for hero stats
+function animateCountUp(el, target, duration, suffix) {
+  suffix = suffix || '';
+  duration = duration || 1400;
+  const isFloat = target % 1 !== 0;
+  const start = performance.now();
+  function step(now) {
+    const elapsed = now - start;
+    const t = Math.min(elapsed / duration, 1);
+    // ease-out cubic
+    const eased = 1 - Math.pow(1 - t, 3);
+    const value = target * eased;
+    el.textContent = (isFloat ? value.toFixed(1) : Math.floor(value)) + suffix;
+    if (t < 1) requestAnimationFrame(step);
+    else el.textContent = (isFloat ? target.toFixed(1) : target) + suffix;
+  }
+  requestAnimationFrame(step);
+}
+
+// Use IntersectionObserver to trigger count-up when hero stats enter view
+(function setupStatCounters() {
+  const stats = document.querySelectorAll('.hstat');
+  if (!stats.length) return;
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && !entry.target.classList.contains('counted')) {
+        entry.target.classList.add('counted');
+        const numEl = entry.target.querySelector('.hstat-n');
+        if (!numEl) return;
+        const raw = numEl.textContent.trim();
+        // Parse: "24/7", "95%", "100%", "0", etc.
+        if (raw.includes('/')) {
+          // Keep "24/7" as static — no animation needed
+          return;
+        }
+        const numMatch = raw.match(/^([\d.]+)(.*)$/);
+        if (numMatch) {
+          const target = parseFloat(numMatch[1]);
+          const suffix = numMatch[2];
+          numEl.textContent = '0' + suffix;
+          setTimeout(() => animateCountUp(numEl, target, 1600, suffix), 200);
+        }
+      }
+    });
+  }, { threshold: 0.4 });
+  stats.forEach(s => io.observe(s));
+})();
+
+// 4. Demo counter — syncs with 12s animation cycle
+(function animateDemoCounter() {
+  const countEl = document.getElementById('demo-count');
+  if (!countEl) return;
+  // The 12 balls disappear at these timing points (matching CSS keyframes)
+  const ballTimings = [12, 18, 24, 30, 35, 42, 50, 58, 66, 75, 84, 94]; // percentage
+  const cycleMs = 12000;
+  const startTime = performance.now();
+  function tick(now) {
+    const elapsed = (now - startTime) % cycleMs;
+    const pct = (elapsed / cycleMs) * 100;
+    let collected = 0;
+    for (const t of ballTimings) {
+      if (pct >= t) collected++;
+    }
+    countEl.textContent = collected;
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+let toastTimer = null;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+loadUser();
+refreshUserUI();
+updateCartUI();
+
+// Close modals on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeAuth();
+    closeAccount();
+    closeCart();
+    closeCheckout();
+  }
+});
+
+// Clear errors as user types
+['login-email','login-phone','login-password','signup-name','signup-email','signup-phone','signup-password2',
+ 'co-name','co-email','co-phone','co-address','co-city','co-zip','co-card','co-exp','co-cvv','co-card-name']
+.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', () => {
+    el.classList.remove('invalid');
+    const err = document.getElementById(id + '-err');
+    if (err) err.classList.remove('show');
+  });
+});
+const countrySel = document.getElementById('co-country');
+if (countrySel) countrySel.addEventListener('change', () => {
+  countrySel.classList.remove('invalid');
+  document.getElementById('co-country-err').classList.remove('show');
+});
+</script>
+
+</body>
+</html>
