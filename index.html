@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     :root {
@@ -2800,6 +2801,10 @@
 
 
 <script>
+const SUPABASE_URL = 'https://wodkfrnkcpewnyahyyqy.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvZGtmcm5rY3Bld255YWh5eXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNTIyOTIsImV4cCI6MjA5NTYyODI5Mn0.cfRHsDV-4HlBgbjiBusFAoRQsK5U-QL5zJPPUe8xE1U';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // ═══════════════════════════════════════════
 // DATA
 // ═══════════════════════════════════════════
@@ -3078,8 +3083,16 @@ function handleSignup(e) {
   showToast('Account created — welcome to Vali!');
 }
 
-function socialSignIn(provider) {
-  // In a real product this would redirect to OAuth. For this demo we create a quick local account.
+async function socialSignIn(provider) {
+  if (provider === 'Google') {
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin }
+    });
+    if (error) alert('Google sign-in error: ' + error.message);
+    return;
+  }
+  // Apple — keep existing fake local-account behavior
   const fakeEmail = provider.toLowerCase() + '_user@example.com';
   const users = loadUsersList();
   if (!users[fakeEmail]) {
@@ -3101,7 +3114,8 @@ function socialSignIn(provider) {
   showToast('Signed in with ' + provider);
 }
 
-function signOut() {
+async function signOut() {
+  await sb.auth.signOut();
   clearUser();
   refreshUserUI();
   closeAccount();
@@ -3515,6 +3529,32 @@ function showToast(msg) {
 loadUser();
 refreshUserUI();
 updateCartUI();
+
+function syncSupabaseUser(user) {
+  currentUser = {
+    name: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0],
+    email: user.email,
+    phone: user.phone || '',
+    phoneDigits: '',
+    createdAt: user.created_at || new Date().toISOString()
+  };
+  saveUser();
+  refreshUserUI();
+}
+
+sb.auth.getSession().then(({ data: { session } }) => {
+  if (session) syncSupabaseUser(session.user);
+});
+
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    syncSupabaseUser(session.user);
+    showToast('Welcome back, ' + (currentUser.name || 'friend') + '!');
+  } else if (event === 'SIGNED_OUT') {
+    clearUser();
+    refreshUserUI();
+  }
+});
 
 // Close modals on Escape
 document.addEventListener('keydown', (e) => {
