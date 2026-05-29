@@ -2803,7 +2803,15 @@
 <script>
 const SUPABASE_URL = 'https://wodkfrnkcpewnyahyyqy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvZGtmcm5rY3Bld255YWh5eXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNTIyOTIsImV4cCI6MjA5NTYyODI5Mn0.cfRHsDV-4HlBgbjiBusFAoRQsK5U-QL5zJPPUe8xE1U';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'implicit',
+    storage: window.localStorage
+  }
+});
 
 // ═══════════════════════════════════════════
 // DATA
@@ -3542,19 +3550,23 @@ function syncSupabaseUser(user) {
   refreshUserUI();
 }
 
-sb.auth.getSession().then(({ data: { session } }) => {
-  if (session) syncSupabaseUser(session.user);
-});
-
 sb.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' && session) {
+  if (event === 'SIGNED_IN' && session?.user) {
     syncSupabaseUser(session.user);
-    showToast('Welcome back, ' + (currentUser.name || 'friend') + '!');
+    showToast('Welcome, ' + (currentUser.name || 'friend') + '!');
   } else if (event === 'SIGNED_OUT') {
     clearUser();
     refreshUserUI();
   }
 });
+
+(async () => {
+  await new Promise(r => setTimeout(r, 50));
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    syncSupabaseUser(session.user);
+  }
+})();
 
 // Close modals on Escape
 document.addEventListener('keydown', (e) => {
