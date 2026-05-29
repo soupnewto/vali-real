@@ -3561,27 +3561,29 @@ sb.auth.onAuthStateChange((event, session) => {
 });
 
 (async () => {
-  // Try Supabase's built-in detection first
-  await new Promise(r => setTimeout(r, 200));
-  let { data: { session } } = await sb.auth.getSession();
+  // Give Supabase a tick to process the URL
+  await new Promise(r => setTimeout(r, 100));
 
-  // If no session yet but URL has access_token, manually exchange
-  if (!session && window.location.hash.includes('access_token')) {
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const access_token = hashParams.get('access_token');
-    const refresh_token = hashParams.get('refresh_token');
-    if (access_token && refresh_token) {
-      const { data, error } = await sb.auth.setSession({ access_token, refresh_token });
-      if (data?.session) {
-        session = data.session;
-        // Clean up URL
-        window.history.replaceState(null, '', window.location.pathname);
-      }
+  // Check for ?code= in URL (PKCE flow)
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get('code');
+
+  if (code) {
+    // Manually exchange the code for a session
+    const { data, error } = await sb.auth.exchangeCodeForSession(window.location.href);
+    if (error) {
+      console.error('OAuth code exchange failed:', error);
+    } else if (data?.session?.user) {
+      syncSupabaseUser(data.session.user);
+      // Clean the ?code= out of the URL
+      window.history.replaceState(null, '', window.location.pathname);
     }
-  }
-
-  if (session?.user) {
-    syncSupabaseUser(session.user);
+  } else {
+    // No code in URL — check for existing session
+    const { data: { session } } = await sb.auth.getSession();
+    if (session?.user) {
+      syncSupabaseUser(session.user);
+    }
   }
 })();
 
